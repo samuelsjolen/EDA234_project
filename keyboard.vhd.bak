@@ -1,0 +1,68 @@
+library ieee;
+use ieee.std_logic_1164.all;
+use ieee.numeric_std.all;
+use ieee.math_real.all;
+
+entity keyboard is
+  port (
+    clk   : in  std_logic;
+    reset : in  std_logic;
+    key   : in  STD_LOGIC_VECTOR(7 downto 0); -- X1 -> X4 = pin 1 -> pin 4
+                                              -- Y1 -> Y4 = pin 7 -> pin 10
+    seg   : out STD_LOGIC_VECTOR(7 downto 0);
+    an    : out STD_LOGIC_VECTOR(7 downto 0)
+  );
+end entity;
+
+architecture keyboard_arch of keyboard is
+
+signal key_sig  : std_logic_vector(7 downto 0);
+signal seg_sig  : std_logic_vector(7 downto 0);
+signal an_sig   : std_logic_vector(7 downto 0);
+signal rst_sig  : std_logic;
+
+
+
+begin
+  rst_sig <= reset;
+  key_sig <= key;
+
+-- Meant to change the value of key_sig when a physical key is pressed
+  key_input_proc : process (clk)
+  begin
+    key_sig <= key;
+  end process;
+
+  an_proc : process (clk)
+    AN <= "11111110"; -- Activates AN0
+  end process;
+  
+-- Meant to change the segment output when a key is pressed
+  key_output_proc : process (key_sig)
+  begin
+    case key_sig is
+      when "00010001" => seg_sig <= "11111001"; -- Displays 1
+      when "00010010" => seg_sig <= "10100100"; -- Displays 2
+      when "00010100" => seg_sig <= "10110000"; -- Displays 3
+      when "00011000" => seg_sig <= "01110111"; -- Displays A
+      when "00100001" => seg_sig <= "10011001"; -- Displays 4
+      when "00100010" => seg_sig <= "10010010"; -- Displays 5
+      when "00100100" => seg_sig <= "10000010"; -- Displays 6
+      when "00101000" => seg_sig <= "01111100"; -- Displays b
+      when "01000001" => seg_sig <= "11111000"; -- Displays 7
+      when "01000010" => seg_sig <= "10000000"; -- Displays 8
+      when "01000100" => seg_sig <= "10010000"; -- Displays 9
+      when "01001000" => seg_sig <= "01110001"; -- Displays C
+      when "10000001" => seg_sig <= "01110001"; -- Displays F
+      when "10000010" => seg_sig <= "01110001"; -- Displays 0
+      when "10000100" => seg_sig <= "01111001"; -- Displays E
+      when "10001000" => seg_sig <= "00111110"; -- Displays d
+      when others     => seg_sig <= "00100000"; -- Error state
+    end case;
+  end process;
+
+end architecture;
+
+
+    
+  
