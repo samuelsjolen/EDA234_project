@@ -1,9 +1,12 @@
 restart -f -nowave
 config wave -signalnamewidth 1
 
-add wave clk_sig
-add wave key_sig
-add wave -radix hexadecimal seg_sig 
+add wave clk
+add wave row
+add wave col
+add wave -radix hexadecimal seg
+
+
 
 
 run 1000ns
