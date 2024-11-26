@@ -19,7 +19,7 @@ architecture keyboard_arch of keyboard is
   signal row_internal   : std_logic_vector(3 downto 0);
   signal col_reg        : std_logic_vector(3 downto 0);
   signal seg_buffer     : std_logic_vector(7 downto 0);
-  signal slow_clk       : std_logic := '0';
+  -- signal slow_clk       : std_logic := '0';
 
 begin
 
@@ -32,7 +32,7 @@ begin
     row_reg <= "1110";
     shifted_out <= '1';
     col_reg <= (others => '1');
-    slow_clk <= '0';
+    -- slow_clk <= '0';
   elsif rising_edge(clk) then
     seg <= seg_buffer;
     shifted_out <= row_reg(3);
