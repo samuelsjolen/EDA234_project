@@ -9,4 +9,4 @@ add wave -radix hexadecimal seg_tb
 
 
 
-run 1000ns
+run 10000ns

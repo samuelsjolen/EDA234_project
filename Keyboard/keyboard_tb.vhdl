@@ -60,7 +60,8 @@ begin
         resetn_tb <= '0';
         wait for 20 ns;
         resetn_tb <= '1';
-
+        for i in 0 to 2 loop
+            wait for 2*clk_period;
         -- Test input sequence for col values
         -- Expect to display "1" (0xF9) when col = "1110"
         col_tb <= "1110";
@@ -68,7 +69,7 @@ begin
 
         -- Expect to display "2" (0xA4) when col = "1101"
         col_tb <= "1101";
-        wait for 2*clk_period;
+        wait for 3*clk_period;
 
         -- Expect to display "3" (0xB0) when col = "1011"
         col_tb <= "1011";
@@ -76,8 +77,8 @@ begin
 
         -- Expect to display "A" (0x88) when col = "0111"
         col_tb <= "0111";
-        wait for 2*clk_period;
-
+        wait for 5*clk_period;
+        end loop;
         -- Reset col to default state and observe behavior
         col_tb <= (others => '1');
         wait for 2*clk_period;
