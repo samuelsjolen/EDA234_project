@@ -14,28 +14,36 @@ entity keyboard is
 end entity;
 
 architecture keyboard_arch of keyboard is
- -- signal row_reg   : std_logic_vector(3 downto 0);
+  signal row_reg   : std_logic_vector(3 downto 0):="1110";
   signal col_reg   : std_logic_vector(3 downto 0);
   signal seg_buffer: std_logic_vector(7 downto 0);
+
 begin
 
   AN <= "11111110"; 
+input_proc : process (clk)
+begin
+    if rising_edge(clk) then
+        for i in 0 to 3 loop 
+            unsigned(row_reg);
+            shift_left(row_reg);
+            row <= std_logic_vector(row_reg(0 downto 3));
+            if col = "1110" then
+                seg_buffer <= "11111001"; -- Displays 1 (0xF9)
+            elsif col = "1101" then
+                seg_buffer <= "10100100"; -- Displays 2 (0xA4)
+            elsif col = "1011" then
+                seg_buffer <= "10110000"; -- Displays 3 (0xB0)
+            elsif col = "0111" then
+                seg_buffer <= "10001000"; -- Displays A (0x88)
+            else
+                seg_buffer <= (others => '0');
+            end if; 
+        end if;
+    end loop; 
+end process;
 
-  input_proc : process (col_reg)
-  begin
-      case col_reg is
-        when "1000" =>
-          seg_buffer <= "11111001"; -- Displays 1 (0xF9)
-        when "0100" =>
-          seg_buffer <= "10100100"; -- Displays 2 (0xA4)
-        when "0010" =>
-          seg_buffer <= "10110000"; -- Displays 3 (0xB0)
-        when "0001" =>
-          seg_buffer <= "10001000"; -- Displays A (0x88)
-        when others =>
-          seg_buffer <= (others => '0'); -- Default to blank display
-      end case;
-  end process;
+
 
   reg_process : process(clk, resetn)
   begin 
@@ -45,7 +53,7 @@ begin
       col_reg <= (others => '0');
     elsif rising_edge(clk) then
       seg <= seg_buffer;
-      row <= "0001";
+      row <= "1110";
       col_reg <= col;
     end if;
         
