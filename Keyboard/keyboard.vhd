@@ -23,6 +23,7 @@ architecture keyboard_arch of keyboard is
 
 begin
 
+    -- Process used to generate a slow clock
 process (clk)
   variable counter : integer := 0;
 begin
@@ -40,6 +41,7 @@ begin
     end if;
 end process;
 
+-- Process used to scan between the rows
 reg_proc : process (slow_clk)
 begin
   if resetn = '0' then
@@ -50,9 +52,9 @@ begin
     col_reg <= (others => '1');
   elsif rising_edge(slow_clk) then
     seg <= seg_buffer;
-    shifted_out <= row_reg(3);
-    row_reg <= row_reg(2 downto 0) & row_reg(3);
-    row_internal <= std_logic_vector(row_reg);
+    shifted_out <= row_reg(3); -- Save the last bit of row_reg
+    row_reg <= row_reg(2 downto 0) & row_reg(3); -- Shift row_reg
+    row_internal <= std_logic_vector(row_reg); -- Convert to std_logic_vector
     col_reg <= col;
   end if;
   row <= row_internal;
@@ -60,6 +62,7 @@ end process;
 
 AN <= "11111110";
 
+-- Process used to output correct number, depending on active row
 input_proc : process (clk)
 begin
   if rising_edge(clk) then
@@ -73,9 +76,9 @@ begin
           elsif col = "0111" then
             seg_buffer <= "10001000"; -- Displays A (0x88)
           else
-            seg_buffer <= "10111111";
+            seg_buffer <= "11111111";
           end if;
-        elsif row_internal = "1011" then
+        elsif row_internal = "1101" then
           if col = "1110" then
             seg_buffer <= "10011001"; -- Displays 4 (0x99)
           elsif col = "1101" then
@@ -83,21 +86,33 @@ begin
           elsif col = "1011" then
             seg_buffer <= "10000010"; -- Displays 6 (0x82)
           elsif col = "0111" then
-            seg_buffer <= "11111000"; -- Displays B (0xF8)
+            seg_buffer <= "10000011"; -- Displays B (0xF8)
           else
-            seg_buffer <= "10111111";
+            seg_buffer <= "11111111";
           end if;
-        elsif row_internal = "0111" then
+        elsif row_internal = "1011" then
           if col = "1110" then
-            seg_buffer <= "10000011"; -- Displays 7 (0x83)
+            seg_buffer <= "11111000"; -- Displays 7 (0x83)
           elsif col = "1101" then
             seg_buffer <= "10000000"; -- Displays 8 (0x80)
           elsif col = "1011" then
             seg_buffer <= "10010000"; -- Displays 9 (0x90)
           elsif col = "0111" then
-            seg_buffer <= "10001001"; -- Displays C (0x89)
+            seg_buffer <= "11000110"; -- Displays C (0x89)
           else
-            seg_buffer <= "10111111";
+            seg_buffer <= "11111111";
+          end if;
+        elsif row_internal = "0111" then
+            if col = "1110" then
+              seg_buffer <= "01101101"; -- Displays * (0x83)
+            elsif col = "1101" then
+              seg_buffer <= "11000000"; -- Displays 0 (0x00)
+            elsif col = "1011" then
+              seg_buffer <= "01011011"; -- Displays # (0x90)
+            elsif col = "0111" then
+              seg_buffer <= "10100001"; -- Displays d (0x89)
+            else
+              seg_buffer <= "11111111";
           end if;
         end if;
     end if;
