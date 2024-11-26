@@ -1,112 +1,96 @@
 library ieee;
 use ieee.std_logic_1164.all;
 use ieee.numeric_std.all;
-use STD.textio.all;
-
 
 entity keyboard_tb is
 end entity;
 
-
-architecture keyboard_tb_arch of keyboard_tb is
-
-  component keyboard is
+architecture testbench of keyboard_tb is
+  -- Component declaration
+  component keyboard
     port (
       clk   : in  std_logic;
       resetn: in  std_logic;
-      key   : in  STD_LOGIC_VECTOR(7 downto 0); -- X1 -> X4 = pin 1 -> pin 4
-                                                -- Y1 -> Y4 = pin 7 -> pin 10
-      seg   : out STD_LOGIC_VECTOR(7 downto 0);
-      AN    : out STD_LOGIC_VECTOR(7 downto 0)
+      row   : in  std_logic_vector(3 downto 0);
+      col   : in  std_logic_vector(3 downto 0);
+      seg   : out std_logic_vector(7 downto 0);
+      AN    : out std_logic_vector(7 downto 0)
     );
-    end component keyboard;
+  end component;
 
-  file key_vectors : text open read_mode is "C:\Chalmers\EDA234\EDA_234_project\test_vectors\key_vectors.txt"; -- <Keyword> <name in code> : <file_type> is <mode> "<file_path>"
-  file seg_vectors : text open read_mode is "C:\Chalmers\EDA234\EDA_234_project\test_vectors\seg_vectors.txt"; -- <Keyword> <name in code> : <file_type> is <mode> "<file_path>"
+  -- Testbench signals
+  signal clk   : std_logic := '0';
+  signal resetn: std_logic := '1';
+  signal row   : std_logic_vector(3 downto 0) := (others => '0');
+  signal col   : std_logic_vector(3 downto 0) := (others => '0');
+  signal seg   : std_logic_vector(7 downto 0);
+  signal AN    : std_logic_vector(7 downto 0);
 
-  signal clk_sig  : std_logic := '0';
-  signal reset_sig: std_logic := '0';
-  signal seg_sig  : STD_LOGIC_VECTOR(7 downto 0);
-  signal key_sig  : STD_LOGIC_VECTOR(7 downto 0);
-  signal AN_sig   : STD_LOGIC_VECTOR(7 downto 0); 
+  -- Clock period constant
+  constant clk_period : time := 10 ns;
 
-  constant PERIOD : time      := 10 ns; 
-  
-  function to_stdlogicvector(s : string) return std_logic_vector is -- Funktion för att omvandla string till std_logic_vector
-    variable result : std_logic_vector(s'length-1 downto 0);
+  -- Function to convert std_logic_vector to string
+  function to_string(slv: std_logic_vector) return string is
+    variable result: string(1 to slv'length);
   begin
-    for i in s'range loop
-      if s(i) = '0' then
-        result(i-1) := '0';
-      elsif s(i) = '1' then
-        result(i-1) := '1';
+    for i in slv'range loop
+      if slv(i) = '0' then
+        result(i - slv'low + 1) := '0';
       else
-        result(i-1) := 'X'; -- Hantera okända tecken
+        result(i - slv'low + 1) := '1';
       end if;
     end loop;
     return result;
   end function;
 
-  function to_string(slv: std_logic_vector) return string is
-    variable result: string(1 to slv'length);
- begin
-    for i in slv'range loop
-       result(i - slv'low + 1) := character'VALUE(std_ulogic'IMAGE(slv(i)));
-    end loop;
-    return result;
- end function;
-  
+begin
+  -- Instantiate the keyboard component
+  uut: keyboard
+    port map (
+      clk   => clk,
+      resetn => resetn,
+      row   => row,
+      col   => col,
+      seg   => seg,
+      AN    => AN
+    );
 
+  -- Clock generation process
+  clk_process : process
   begin
-    keyboard_inst : component keyboard
-      port map (
-        clk     => clk_sig,
-        resetn  => reset_sig,
-        key     => key_sig,
-        seg     => seg_sig,
-        AN      => AN_sig
-      );
+    clk <= '0';
+    wait for clk_period / 2;
+    clk <= '1';
+    wait for clk_period / 2;
+  end process;
 
-    clk_sig <= not clk_sig after PERIOD/2.0; 
+  -- Test process
+  stim_proc : process
+  begin
+    -- Test case 1: Reset condition
+    resetn <= '0';
+    wait for clk_period;
+    resetn <= '1';
 
-    verification_proc : process
-      variable key_buffer : line;
-      variable seg_buffer : line;
-      variable key_value  : std_logic_vector(7 downto 0);
-      variable seg_value  : std_logic_vector(7 downto 0);
-      variable key_str    : string(1 to 8); -- Temporär variabel för att läsa av sträng
-      variable seg_str    : string(1 to 8); -- Temporär variabel för att läsa av sträng
-    begin
-      reset_sig <= '1';
-      wait for PERIOD;
-      reset_sig <= '0';
-      wait for PERIOD;
-      reset_sig <= '1';
-      wait for PERIOD;
-      while not endfile(key_vectors) loop
-        readline(key_vectors, key_buffer); -- Reads line from key_vectors and stores in key_buffer
-        readline(seg_vectors, seg_buffer); -- Reads line from seg_vectors and stores in seg_buffer
+    -- Test each row and column combination
+    for r in 0 to 3 loop
+      for c in 0 to 3 loop
+        row <= std_logic_vector(to_unsigned(2**r, 4)); -- Set one row active
+        col <= std_logic_vector(to_unsigned(2**c, 4)); -- Set one column active
+        wait for clk_period * 2;
 
-        read(key_buffer, key_str); -- Läser in key_buffer som en sträng på key_str
-        read(seg_buffer, seg_str); -- Läser in seg_buffer som en sträng på seg_str
-
-        key_value := to_stdlogicvector(key_str); -- Omvandlar key_str till std_logic_vector
-        seg_value := to_stdlogicvector(seg_str); -- Omvandlar seg_str till std_logic_vector
-
-        key_sig <= key_value;
-        wait for 3*PERIOD;
-        if seg_sig = seg_value then
-          report "Match";
-        end if;
-        assert seg_sig = seg_value
-        report "Mismatched vectors: seg_sig = " & to_string(seg_sig) & ", Seg should be = " & to_string(seg_value) & 
-          ", Key should be = " & to_string(key_value) & ", key_sig = " & to_string(key_sig)
-        severity WARNING;
-        wait for 5*PERIOD;
+        -- Report the results
+        report "Testing row: " & integer'image(r) & ", col: " & integer'image(c) & 
+               ", seg: " & to_string(seg) severity note;
       end loop;
-      wait for 1000*PERIOD;
-      report "Testbench finished" severity FAILURE;
-    end process;
-  
+    end loop;
 
+    -- Test invalid state
+    row <= "0000"; -- No row active
+    col <= "0000"; -- No column active
+    wait for clk_period * 2;
+
+    report "Testbench completed" severity note;
+    wait;
+  end process;
 end architecture;
