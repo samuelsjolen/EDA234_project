@@ -5,7 +5,7 @@ use ieee.numeric_std.all;
 entity keyboard is
   port (
     clk    : in  std_logic;
-    resetn : in  std_logic;
+    reset : in  std_logic;
     row    : out std_logic_vector(3 downto 0); -- Pin ja1 -> ja4
     col    : in  std_logic_vector(3 downto 0); -- Pin ja7 -> ja10
     seg    : out std_logic_vector(7 downto 0); -- Output on segment display
@@ -27,7 +27,7 @@ begin
 process (clk)
   variable counter : integer := 0;
 begin
-    if resetn = '0' then
+    if reset = '0' then
         counter := 0;
         slow_clk <= '0';
     else
@@ -44,7 +44,7 @@ end process;
 -- Process used to scan between the rows
 reg_proc : process (slow_clk)
 begin
-  if resetn = '0' then
+  if reset = '0' then
     seg <= (others => '0');
     row_internal <= (others => '1');
     row_reg <= "1110";

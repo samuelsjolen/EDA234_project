@@ -11,7 +11,7 @@ architecture behavior of keyboard_tb is
     component keyboard is
         port (
             clk    : in  std_logic;
-            resetn : in  std_logic;
+            reset : in  std_logic;
             row    : out std_logic_vector(3 downto 0);
             col    : in  std_logic_vector(3 downto 0);
             seg    : out std_logic_vector(7 downto 0);
@@ -21,7 +21,7 @@ architecture behavior of keyboard_tb is
 
     -- Signals to connect to the UUT
     signal clk_tb    : std_logic := '0';
-    signal resetn_tb : std_logic := '1';
+    signal reset_tb : std_logic := '1';
     signal row_tb    : std_logic_vector(3 downto 0);
     signal col_tb    : std_logic_vector(3 downto 0) := (others => '1');
     signal seg_tb    : std_logic_vector(7 downto 0);
@@ -35,7 +35,7 @@ begin
     uut: keyboard
         port map (
             clk    => clk_tb,
-            resetn => resetn_tb,
+            reset => reset_tb,
             row    => row_tb,
             col    => col_tb,
             seg    => seg_tb,
@@ -57,9 +57,9 @@ begin
     stim_process: process
     begin
         -- Initialize inputs
-        resetn_tb <= '0';
+        reset_tb <= '0';
         wait for 20 ns;
-        resetn_tb <= '1';
+        reset_tb <= '1';
         for i in 0 to 2 loop
             wait for 2*clk_period;
         -- Test input sequence for col values
