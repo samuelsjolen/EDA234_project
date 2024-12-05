@@ -51,9 +51,10 @@ entity rtc is
   port(
     clk         : in      std_logic;
     reset       : in      std_logic;
-    data_trans  : inout   std_logic;  -- Pin 2 (Yellow)
-    SCLK        : out     std_logic;  -- Pin 1 (Green)
-    CE          : out     std_logic  -- Pin 3 (CE)
+    data_trans  : inout     std_logic;  -- Pin 2 (Yellow)
+    sclk        : out     std_logic;  -- Pin 1 (Green)
+    ce          : out     std_logic;  -- Pin 3 (CE)
+    init_byte_ver   : out     std_logic_vector(7 downto 0)
     --seg         : out std_logic_vector(7 downto 0); -- Output on segment display, only for testing
     --AN          : out std_logic_vector(7 downto 0)  -- To lit display, only for testing
   );
@@ -64,7 +65,7 @@ entity rtc is
   architecture rtc_arch of rtc is
   -- CLK must be at 0 when CE driven to high
   -- 
-  signal init_byte      : unsigned(7 downto 0):="01111110";
+  signal init_byte      : std_logic_vector(7 downto 0):="10111111";
   signal sclk_count     : std_logic;
   signal sclk_internal  : std_logic;
   signal ce_internal    : std_logic;
@@ -73,52 +74,65 @@ entity rtc is
   --signal date_time  : std_logic_vector();
 
   begin
-
+    init_byte_ver <= init_byte;
+    sclk <= sclk_internal;
+    ce <= ce_internal;
    -- AN <= "11111110";
 
     -- Creates a slow clock
-    sclk_proc : process(clk)
+    sclk_proc : process(reset, clk)
       variable counter: integer := 0;
     begin
       if reset = '0' then
-        SCLK <= '0'; -- Bra att börja med falling edge
+ -- Bra att börja med falling edge
         counter := 0;
+        sclk_internal <= '0';
       elsif rising_edge(clk) then
-        if counter = 1000 then
+        if counter = 5 then
           sclk_internal <= not sclk_internal;
           counter := 0;
         else
           counter := counter + 1;
         end if;
       end if;
-      SCLK <= sclk_internal;
     end process;
 
     -- Shifts out the command byte on the I/O
-    init_proc : process(reset, sclk_internal)
+    init_proc : process(reset, sclk_internal, ce_internal)
     begin
       if reset = '0' then
-        init_byte <= "01111110";
+        init_byte <= "10101010";
       else
         if ce_internal = '1'  then      
           data_trans <= init_byte(0);
           init_byte <= '0' & init_byte(7 downto 1);
         else
-          init_byte <= "01111110";
+          init_byte <= "10101010";
         end if;
       end if;
     end process;
+
+    rec_proc : process()
+
+    end process;
   
-    ce_proc : process(reset)
+    ce_proc : process(reset, sclk_internal)
+    variable counter: integer := 0;
     begin
       if reset = '0' then
         ce_internal <= '0';
+        counter := 0;
       else
-        if falling_edge(reset) then
-          ce_internal <= '1';
+        if falling_edge(sclk_internal) then
+          if counter = 15 then
+            ce_internal <= not ce_internal;
+            counter :=0;
+          else
+            counter := counter + 1;
+          end if;
         end if;
       end if;
-      CE <= ce_internal;
+ 
     end process;
 
 
