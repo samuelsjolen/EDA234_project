@@ -9,11 +9,11 @@ architecture rtc_tb_arch of rtc_tb is
 
   component rtc is 
     port(
-      clk_tb        : in      std_logic;  -- Clock signal
-      reset_tb      : in      std_logic;  -- 
-      data_trans_tb : inout   std_logic;  -- Pin 2 (Yellow)
-      SCLK_tb       : out     std_logic;  -- Pin 1 (Green)
-      CE_tb         : out     std_logic;  -- Pin 3 (CE)
+      clk        : in      std_logic;  -- Clock signal
+      reset      : in      std_logic;  -- 
+      data_trans : inout   std_logic;  -- Pin 2 (Yellow)
+      SCLK       : out     std_logic;  -- Pin 1 (Green)
+      CE         : out     std_logic  -- Pin 3 (CE)
     );
     end component;
 
@@ -46,8 +46,14 @@ begin
     end loop;
 end process;
 
-ce_process: process
+ver_process: process
 begin
-
-
+  reset_tb <= '0';
+  wait for 2*clk_period;
+  reset_tb <= '1';
+  wait for 2*clk_period;
+  CE_tb <= '1';
+  wait for 20*clk_period;
+  CE_tb <= '0';
+end process;
 end architecture;
