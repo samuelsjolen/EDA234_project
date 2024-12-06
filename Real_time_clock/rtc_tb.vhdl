@@ -18,64 +18,78 @@ architecture rtc_tb_arch of rtc_tb is
     );
     end component;
 
-  signal clk_tb         : STD_LOGIC;
-  signal reset_tb       : std_logic;
-  signal data_trans_tb  : std_logic;
-  signal SCLK_tb        : std_logic;
-  signal CE_tb          : std_logic;
-  signal init_byte_ver  : std_logic_vector(7 downto 0);
+  signal clk            : std_logic;
+  signal reset          : std_logic;
+  signal sclk           : std_logic;
+  signal ce             : std_logic;
   signal ce_internal    : std_logic;
-  signal recieved       : std_logic_vector(7 downto 0);
+  signal data_trans     : std_logic;
+  signal init_byte_ver  : std_logic_vector(7 downto 0);
+  signal data_in        : std_logic_vector(7 downto 0):= "00000000";
+  signal data_out       : std_logic_vector(7 downto 0):= "11111111";
+
 
 
   constant clk_period : time := 1 ns; -- 100 MHz
 
 begin
-  ce_internal <= ce_tb
+  ce_internal <= ce;
 
 rtc_inst: rtc
  port map(
-    clk => clk_tb,
-    reset => reset_tb,
-    data_trans => data_trans_tb,
-    SCLK => SCLK_tb,
-    CE => CE_tb,
+    clk => clk,
+    reset => reset,
+    data_trans => data_trans,
+    sclk => sclk,
+    ce => ce,
     init_byte_ver => init_byte_ver
 );
   
 clk_process: process
 begin
     while true loop
-        clk_tb <= '1';
+        clk <= '1';
         wait for 10*clk_period / 2;
-        clk_tb <= '0';
+        clk <= '0';
         wait for 10*clk_period / 2;
     end loop;
 end process;
 
 rst_process: process
 begin
-  reset_tb <= '1';
+  reset <= '1';
   wait for 5*clk_period;
-  reset_tb <= '0';
+  reset <= '0';
   wait for 5*clk_period;
-  reset_tb <= '1';
-  wait for 100000*clk_period;
+  reset <= '1';
+  wait;
 end process;
 
 ver_proc : process (sclk, reset, ce_internal)
-  signal shifted_out : std_logic;
+  --signal shifted_in : std_logic;
 begin
-  if recieved = "10101010" then
-    -- Transmit data here
+    if ce_internal = '1' then
+      data_in <= data_trans & data_in(7 downto 1);
+    end if;  
+end process;
 
+out_proc : process (sclk, reset, ce_internal)
+begin
+  if reset = '0' then
+    data_trans <= 'Z';
+    data_out <= (others => '0');
+  elsif rising_edge(sclk) then
+    if ce_internal = '1' then
+      if data_in /= "10101010" then
+        data_trans <= 'Z';
+      else
+        data_trans <= data_out(0);
+        data_out <= '0' & data_out(7 downto 1);
+      end if;
     else
-          
-      if ce_internal = '1' then
-        recieved <= data_trans_tb & recieved(6 downto 0);
-
+      data_trans <= 'Z';
+    end if;
   end if;
-  
 end process;
 
 end architecture;

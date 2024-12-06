@@ -2,17 +2,17 @@ restart -f -nowave
 config wave -signalnamewidth 1
 
 add wave -divider "Essentials"
-add wave clk_tb
-add wave SCLK_tb
-add wave reset_tb
-add wave CE_tb
+add wave clk
+add wave sclk
+add wave reset
+add wave CE
 
-add wave -divider "Transmitted bits"
-add wave data_trans_tb
-add wave recieved
 add wave -divider "Initial byte, shifts"
 add wave init_byte_ver
+add wave -divider "Transmitted bits"
+add wave data_trans
+add wave data_in
+add wave data_out
 
 
-
-run 10000ns
+run 10000000ns
