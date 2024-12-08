@@ -5,9 +5,11 @@ add wave -divider "Essentials"
 add wave clk
 add wave sclk
 add wave reset
-add wave CE
+add wave ce
+add wave ce_internal
 
-add wave -divider "Initial byte, shifts"
+add wave -divider "Verification signals"
+add wave -radix decimal state
 add wave init_byte_ver
 add wave -divider "Transmitted bits"
 add wave data_trans
@@ -15,4 +17,5 @@ add wave data_in
 add wave data_out
 
 
-run 10000000ns
+
+run 100000ns
