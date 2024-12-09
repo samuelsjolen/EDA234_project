@@ -16,7 +16,8 @@ architecture rtc_tb_arch of rtc_tb is
       sclk       : out     std_logic;  -- Pin 1 (Green)
       ce         : out     std_logic;  -- Pin 3 (CE)
       init_byte_ver   : out     std_logic_vector(7 downto 0);
-      state       : out     std_logic_vector(2 downto 0)
+      state       : out     std_logic_vector(2 downto 0);
+      data_recieved_ver : out STD_LOGIC_VECTOR(7 downto 0)
     );
     end component;
 
@@ -30,6 +31,8 @@ architecture rtc_tb_arch of rtc_tb is
   signal data_in        : std_logic_vector(7 downto 0):= "00000000";
   signal data_out       : std_logic_vector(7 downto 0);
   signal state          : std_logic_vector(2 downto 0);
+  signal data_recieved_ver : std_logic_vector(7 downto 0);
+
 
 
   constant clk_period : time := 10 ns; -- 100 MHz
@@ -45,7 +48,8 @@ rtc_inst: rtc
     sclk => sclk,
     ce => ce,
     init_byte_ver => init_byte_ver,
-    state => state
+    state => state,
+    data_recieved_ver => data_recieved_ver
 );
   
 clk_process: process

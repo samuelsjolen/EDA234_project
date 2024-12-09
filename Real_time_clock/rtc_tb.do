@@ -16,6 +16,9 @@ add wave data_trans
 add wave data_in
 add wave data_out
 
+add wave -divider Recieved
+add wave data_recieved_ver
+
 
 
 run 1000000ns
