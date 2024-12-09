@@ -18,4 +18,4 @@ add wave data_out
 
 
 
-run 100000ns
+run 1000000ns

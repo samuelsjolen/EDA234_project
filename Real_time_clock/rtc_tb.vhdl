@@ -80,7 +80,7 @@ out_proc : process (reset, sclk, ce)
   variable counter : integer :=0;
 begin
   if reset = '0' then
-    data_out <= "10110010";
+    data_out <= "10101010";
     counter := 0;
   else
     if ce = '0' then
@@ -88,10 +88,10 @@ begin
       data_trans <= 'Z';
     elsif ce = '1' then
       counter := counter + 1;
-      if counter >= 7 then
+      if state = "011" then
         data_trans <= data_out(0);
         data_out <= '0' & data_out(7 downto 1);
-      else 
+      elsif state = "010" then 
         data_trans <= 'Z';
       end if;
     end if;
