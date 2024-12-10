@@ -1,6 +1,8 @@
 library ieee;
 use ieee.std_logic_1164.all;
 use ieee.numeric_std.all;
+Library UNISIM;
+use UNISIM.vcomponents.all;
 
 entity rtc is
   port(
@@ -19,6 +21,7 @@ entity rtc is
 
   architecture rtc_arch of rtc is
 
+
     ----------- STATES TYPE DEFINITION -----------
     type states is(
       idle,
@@ -27,7 +30,6 @@ entity rtc is
     );
   ----------- SIGNAL DECLARATIONS ----------- 
   signal init_byte      : std_logic_vector(7 downto 0);
-  signal sclk_count     : std_logic;
   signal sclk_internal  : std_logic;
   signal send           : std_logic;
   signal data_recieved  : std_logic_vector(7 downto 0);
@@ -40,6 +42,20 @@ entity rtc is
 
 
   begin
+  
+
+--   IOBUF_inst : IOBUF
+--   generic map (
+--      DRIVE => 12,
+--      IOSTANDARD => "DEFAULT",
+--      SLEW => "SLOW")
+--   port map (
+--      O => O,     -- Buffer output
+--      IO => data_trans,   -- Buffer inout port (connect directly to top-level port)
+--      I => I,     -- Buffer input
+--      T => T      -- 3-state enable input, high=input, low=output 
+--   );
+  
     ----- VERIFICATION -----
     --init_byte_ver <= init_byte;
     --data_recieved_ver <= data_recieved;
@@ -60,7 +76,7 @@ entity rtc is
           counter := 0;
           sclk_internal <= '0';
         else
-          if counter = 10 then
+          if counter = 100000 then
             sclk_internal <= not sclk_internal;
             counter := 0;
           else
@@ -71,7 +87,7 @@ entity rtc is
     end process;
 
   ----------- PROCESS TO HANDLE TIMING OF STATE SWITCHING -----------
-  state_change_proc : process (clk, reset)
+  state_change_proc : process (clk)
   begin
     if rising_edge(clk) then
       if reset = '0' then
@@ -82,9 +98,13 @@ entity rtc is
     end if;
   end process state_change_proc;
 
+
+
   ----------- PROCESSS DICTATING WHEN TO SWITCH -----------
-  state_next_proc : process (current_state, transmitted)
+  state_next_proc : process (current_state, transmitted, recieved)
   begin
+    next_state <= current_state;
+ 
     case current_state is
       when idle =>
         next_state <= transmitting;
@@ -120,63 +140,36 @@ entity rtc is
     end case;
   end process;
 
- --   ----------- PROCESS -----------
- --   state_next_proc : process (current_state, init_byte)
- --   begin
- --     if rising_edge(clk) then
- --       -- Dictates what to do during idle
- --       if current_state = idle then
- --           ce_internal <= '0';
- --           send <= '0';
- --           --state <= "001"; -- VERIFICATION
- --           next_state <= transmit;
- --       end if;
- --       -- Dictates what to do during transmit
- --       if current_state = transmit then        
- --         ce_internal <= '1';
- --         send <= '1';
- --         --state <= "010"; -- VERIFICATION
- --         if init_byte = "00000000" then
- --           next_state <= recieve;
- --         end if;
- --       end if;
- --       -- Dictates what to do during recieve
- --       if current_state = recieve then
- --         ce_internal <= '1';
- --         send <= '0';
- --         --state <= "011"; -- VERIFICATION
- --       end if;
- --     end if;
- --   end process;
-
     trans_proc : process (sclk_internal, send)
     variable counter_r : integer := 0;
     variable counter_t : integer := 0;
     begin
+    if rising_edge(sclk_internal) then
       if send = '0' then
         init_byte <= "10000011"; -- Reloads the initial data
         data_trans <= 'Z';
-        if ce_internal = '1' then
-          data_recieved <= data_trans & data_recieved(7 downto 1);
-          if counter_r = 8 then
-            recieved <= '1';
-            counter_r := 0;
-          else 
-            counter_r := counter_r + 1;
-            recieved <= '0';
+            if ce_internal = '1' then
+              data_recieved <= data_trans & data_recieved(7 downto 1);
+              if counter_r = 8 then
+                recieved <= '1';
+                counter_r := 0;
+              else 
+                counter_r := counter_r + 1;
+                recieved <= '0';
+              end if;
+            end if;
           end if;
-        end if;
-      end if;
-      if send = '1' then
-        data_trans <= init_byte(0);
-        init_byte <= '0' & init_byte(7 downto 1);
-        if counter_t = 8 then
-          transmitted <= '1';
-          counter_t := 0;
-        else 
-          counter_t := counter_T + 1;
-          transmitted <= '0';
-      end if;
+          if send = '1' then
+            data_trans <= init_byte(0);
+            init_byte <= '0' & init_byte(7 downto 1);
+            if counter_t = 8 then
+              transmitted <= '1';
+              counter_t := 0;
+            else 
+              counter_t := counter_t + 1;
+              transmitted <= '0';
+          end if;
+          end if;
       end if;
     end process;
 
