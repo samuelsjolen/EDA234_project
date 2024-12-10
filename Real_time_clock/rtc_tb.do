@@ -8,17 +8,21 @@ add wave reset
 add wave ce
 add wave ce_internal
 
+add wave -divider "Flags"
+add wave transmitted_ver
+add wave recieved_ver
+
 add wave -divider "Verification signals"
 add wave -radix decimal state
 add wave init_byte_ver
 add wave -divider "Transmitted bits"
 add wave data_trans
-add wave data_in
-add wave data_out
+add wave data_to_tb
+add wave data_from_tb
 
 add wave -divider Recieved
 add wave data_recieved_ver
 
 
 
-run 1000000ns
+run 100000ns
