@@ -1,8 +1,8 @@
 library ieee;
 use ieee.std_logic_1164.all;
 use ieee.numeric_std.all;
-Library UNISIM;
-use UNISIM.vcomponents.all;
+--Library UNISIM;
+--use UNISIM.vcomponents.all;
 
 entity rtc is
   port(
@@ -10,12 +10,12 @@ entity rtc is
     reset             : in      std_logic;
     data_trans        : inout   std_logic;  -- Pin 2 (Yellow)
     sclk              : out     std_logic;  -- Pin 1 (Green)
-    ce                : out     std_logic  -- Pin 3 (Blue)
-    --init_byte_ver     : out     std_logic_vector(7 downto 0); -- VERIFICATION
-    --state             : out     std_logic_vector(2 downto 0); -- VERIFICATION
-    --data_recieved_ver : out     std_logic_vector(7 downto 0); -- VERIFICATION
-    --transmitted_ver   : out     std_logic;
-    --recieved_ver      : out     std_logic
+    ce                : out     std_logic;  -- Pin 3 (Blue)
+    init_byte_ver     : out     std_logic_vector(7 downto 0); -- VERIFICATION
+    state             : out     std_logic_vector(2 downto 0); -- VERIFICATION
+    data_recieved_ver : out     std_logic_vector(7 downto 0); -- VERIFICATION
+    transmitted_ver   : out     std_logic;
+    recieved_ver      : out     std_logic
  );
   end entity;
 
@@ -44,23 +44,23 @@ entity rtc is
   begin
   
 
---   IOBUF_inst : IOBUF
---   generic map (
---      DRIVE => 12,
---      IOSTANDARD => "DEFAULT",
---      SLEW => "SLOW")
---   port map (
---      O => O,     -- Buffer output
---      IO => data_trans,   -- Buffer inout port (connect directly to top-level port)
---      I => I,     -- Buffer input
---      T => T      -- 3-state enable input, high=input, low=output 
---   );
+ -- IOBUF_inst : IOBUF
+ -- generic map (
+ --    DRIVE => 12,
+ --    IOSTANDARD => "DEFAULT",
+ --    SLEW => "SLOW")
+ -- port map (
+ --    O => O,     -- Buffer output
+ --    IO => data_trans,   -- Buffer inout port (connect directly to top-level port)
+ --    I => I,     -- Buffer input
+ --    T => T      -- 3-state enable input, high=input, low=output 
+ -- );
   
     ----- VERIFICATION -----
-    --init_byte_ver <= init_byte;
-    --data_recieved_ver <= data_recieved;
-    --transmitted_ver <= transmitted; 
-    --recieved_ver <= recieved;
+    init_byte_ver <= init_byte;
+    data_recieved_ver <= data_recieved;
+    transmitted_ver <= transmitted; 
+    recieved_ver <= recieved;
 
     ----- INTERNAL SIGNALS -----
     sclk <= sclk_internal;
@@ -76,7 +76,7 @@ entity rtc is
           counter := 0;
           sclk_internal <= '0';
         else
-          if counter = 100000 then
+          if counter = 10 then
             sclk_internal <= not sclk_internal;
             counter := 0;
           else
@@ -87,9 +87,9 @@ entity rtc is
     end process;
 
   ----------- PROCESS TO HANDLE TIMING OF STATE SWITCHING -----------
-  state_change_proc : process (clk)
+  state_change_proc : process (sclk_internal)
   begin
-    if rising_edge(clk) then
+    if falling_edge(sclk_internal) then
       if reset = '0' then
 	      current_state <= idle;
       else
@@ -128,15 +128,15 @@ entity rtc is
       when idle =>
         ce_internal <= '0';
         send <= '0';
-        --state <= "001"; -- VERIFICATION
+        state <= "001"; -- VERIFICATION
       when transmitting =>
         ce_internal <= '1';
         send <= '1';
-        --state <= "010"; -- VERIFICATION
+        state <= "010"; -- VERIFICATION
       when recieving =>
         send <= '0';
         ce_internal <= '1';
-        --state <= "011"; -- VERIFICATION
+        state <= "011"; -- VERIFICATION
     end case;
   end process;
 
@@ -145,20 +145,22 @@ entity rtc is
     variable counter_t : integer := 0;
     begin
     if rising_edge(sclk_internal) then
+      -- Recieves
       if send = '0' then
         init_byte <= "10000011"; -- Reloads the initial data
         data_trans <= 'Z';
-            if ce_internal = '1' then
-              data_recieved <= data_trans & data_recieved(7 downto 1);
-              if counter_r = 8 then
-                recieved <= '1';
-                counter_r := 0;
-              else 
-                counter_r := counter_r + 1;
-                recieved <= '0';
-              end if;
+          if ce_internal = '1' then
+            data_recieved <= data_trans & data_recieved(7 downto 1);
+            if counter_r = 8 then
+              recieved <= '1';
+              counter_r := 0;
+            else 
+              counter_r := counter_r + 1;
+              recieved <= '0';
             end if;
           end if;
+      end if;
+          -- Transmits
           if send = '1' then
             data_trans <= init_byte(0);
             init_byte <= '0' & init_byte(7 downto 1);
