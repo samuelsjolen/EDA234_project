@@ -30,7 +30,7 @@ architecture rtc_tb_arch of rtc_tb is
   signal ce_internal        : std_logic;
   signal data_trans         : std_logic;
   signal init_byte_ver      : std_logic_vector(7 downto 0);
-  signal data_to_tb         : std_logic_vector(7 downto 0):= "00000000";
+  signal data_to_tb         : std_logic_vector(7 downto 0);
   signal data_from_tb       : std_logic_vector(7 downto 0);
   signal state              : std_logic_vector(2 downto 0);
   signal data_recieved_ver  : std_logic_vector(7 downto 0);
@@ -84,6 +84,8 @@ begin
       data_to_tb <= data_trans & data_to_tb(7 downto 1);
     end if;  
 end process;
+
+
 
 
 out_proc : process (reset, sclk, ce)

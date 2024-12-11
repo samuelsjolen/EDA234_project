@@ -36,6 +36,7 @@ entity rtc is
   signal ce_internal    : std_logic;
   signal recieved       : std_logic; -- Flag turns '1' when message fully recieved
   signal transmitted    : std_logic; -- Flag turns '1' when message fully transmitted
+  signal ce_enable      : std_logic; -- Flag to indicate ce can turn high
   
   signal current_state  : states;
   signal next_state     : states;
@@ -76,7 +77,7 @@ entity rtc is
           counter := 0;
           sclk_internal <= '0';
         else
-          if counter = 10 then
+          if counter = 50 then
             sclk_internal <= not sclk_internal;
             counter := 0;
           else
@@ -104,11 +105,12 @@ entity rtc is
   state_next_proc : process (current_state, transmitted, recieved)
   begin
     next_state <= current_state;
- 
     case current_state is
       when idle =>
+        ce_enable <= '0';
         next_state <= transmitting;
       when transmitting =>
+        ce_enable <= '1';
         if transmitted = '1' then
           next_state <= recieving;
         else
@@ -121,21 +123,39 @@ entity rtc is
     end case;
   end process;
 
+        
+
+
+
+-- Process to wait for low sclk --
+  init_wait_proc : process (clk)
+  variable counter : integer := 0;
+  begin
+    if ce_enable = '1' then
+      if counter = 50 then
+        ce_internal <= '1';
+      else
+        ce_internal <= '0';
+        counter := counter + 1;
+      end if;
+    end if;
+  end process;
+
+
+
+
   ----------- PROCESSS DICTATING FUNCTIONS OF EACH STATE -----------
   state_func_proc : process (current_state)
   begin
     case current_state is
       when idle =>
-        ce_internal <= '0';
         send <= '0';
         state <= "001"; -- VERIFICATION
       when transmitting =>
-        ce_internal <= '1';
         send <= '1';
         state <= "010"; -- VERIFICATION
       when recieving =>
         send <= '0';
-        ce_internal <= '1';
         state <= "011"; -- VERIFICATION
     end case;
   end process;
@@ -144,9 +164,10 @@ entity rtc is
     variable counter_r : integer := 0;
     variable counter_t : integer := 0;
     begin
-    if rising_edge(sclk_internal) then
+    if falling_edge(sclk_internal) then
       -- Recieves
       if send = '0' then
+        transmitted <= '0';
         init_byte <= "10000011"; -- Reloads the initial data
         data_trans <= 'Z';
           if ce_internal = '1' then
@@ -162,6 +183,7 @@ entity rtc is
       end if;
           -- Transmits
           if send = '1' then
+            recieved <= '0';
             data_trans <= init_byte(0);
             init_byte <= '0' & init_byte(7 downto 1);
             if counter_t = 8 then
