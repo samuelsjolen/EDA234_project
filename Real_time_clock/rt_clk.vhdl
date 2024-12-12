@@ -36,7 +36,8 @@ entity rtc is
   signal ce_internal    : std_logic;
   signal recieved       : std_logic; -- Flag turns '1' when message fully recieved
   signal transmitted    : std_logic; -- Flag turns '1' when message fully transmitted
-  signal ce_enable      : std_logic; -- Flag to indicate ce can turn high
+  signal wait_ce        : std_logic; -- Flag to indicate ce can turn high
+  signal wait_complete  : std_logic;
   
   signal current_state  : states;
   signal next_state     : states;
@@ -102,21 +103,32 @@ entity rtc is
 
 
   ----------- PROCESSS DICTATING WHEN TO SWITCH -----------
-  state_next_proc : process (current_state, transmitted, recieved)
+  state_next_proc : process (current_state, transmitted, recieved, wait_complete)
   begin
     next_state <= current_state;
     case current_state is
+      -- Idle state --
       when idle =>
-        ce_enable <= '0';
-        next_state <= transmitting;
+        wait_ce <= '1';
+        state <= "001";
+        ce_internal <= '0';
+        if wait_complete = '1' then
+          next_state <= transmitting;
+        end if;
+        -- Transmitting state --
       when transmitting =>
-        ce_enable <= '1';
+        wait_ce <= '0';
+        state <= "010";
+        ce_internal <= '1';
         if transmitted = '1' then
           next_state <= recieving;
         else
           next_state <= transmitting;
         end if;
+        -- Recieving state --
       when recieving =>
+          state <= "011";
+          ce_internal <= '1';
           if recieved = '1' then
             next_state <= idle;
           end if;
@@ -135,9 +147,10 @@ entity rtc is
       if reset = '0' then
         ce_internal <= '0';
       else
-        if ce_enable = '1' then
+        if wait_ce = '1' then
           if counter = 25 then
-            ce_internal <= '1';
+            wait_complete <= '1';
+            counter := 0;
           else
             ce_internal <= '0';
             counter := counter + 1;

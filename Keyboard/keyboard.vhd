@@ -4,12 +4,12 @@ use ieee.numeric_std.all;
 
 entity keyboard is
   port (
-    clk    : in  std_logic;
-    reset : in  std_logic;
-    row    : out std_logic_vector(3 downto 0); -- Pin ja1 -> ja4
-    col    : in  std_logic_vector(3 downto 0); -- Pin ja7 -> ja10
-    seg    : out std_logic_vector(7 downto 0); -- Output on segment display
-    AN     : out std_logic_vector(7 downto 0)  -- Decides which segment to output on
+    clk     : in  std_logic;
+    reset   : in  std_logic;
+    row     : out std_logic_vector(3 downto 0); -- Pin ja1 -> ja4
+    col     : in  std_logic_vector(3 downto 0); -- Pin ja7 -> ja10
+    seg     : out std_logic_vector(7 downto 0); -- Output on segment display
+    AN      : out std_logic_vector(7 downto 0)  -- Decides which segment to output on
   );
 end entity;
 
