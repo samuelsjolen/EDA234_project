@@ -8,22 +8,25 @@ entity ic is
         AN         : out STD_LOGIC_VECTOR (7 downto 0);
         clk        : in STD_LOGIC;
         reset      : in STD_LOGIC
-        -- Decad_db : out std_logic_vector(3 downto 0);     -- Used for debugging
-	    -- tio_pot_db : out std_logic_vector(3 downto 0));  -- Used for debugging
+        -- sec_ones_db : out std_logic_vector(3 downto 0);     -- Used for debugging
+	    -- sec_tens_db : out std_logic_vector(3 downto 0));  -- Used for debugging
     );
-end counter;
+end ic;
 
-architecture behavioral of counter is
+architecture ic_arch of ic is
 
 -- Internal signals
 signal sec_clk_enable : STD_LOGIC := '0'; -- Enable signal instead of using derived clock
 signal LED_activate   : STD_LOGIC; 
 signal refresh        : Unsigned(18 downto 0); 
 signal counter_sec    : integer := 0;
-signal reset          : STD_LOGIC;
 signal num            : unsigned(3 downto 0);   
-signal Decad          : unsigned(3 downto 0);
-signal tio_pot        : unsigned(3 downto 0);
+signal sec_ones       : unsigned(3 downto 0); 
+signal sec_tens       : unsigned(3 downto 0);
+signal min_ones       : unsigned(3 downto 0);
+signal min_tens       : unsigned(3 downto 0);
+signal h_ones         : unsigned(3 downto 0);
+signal h_tens         : unsigned(3 downto 0);
 
 begin
 
@@ -33,7 +36,7 @@ begin
 sec_counter : process (clk, reset)
 begin
 	if rising_edge(clk) then 
-		if reset = '1' then
+		if reset = '0' then
 			counter_sec <= 0;
 			sec_clk_enable <= '0';
 		else
@@ -52,7 +55,7 @@ end process;
 refresh_proc : process (clk, reset)
 begin
 	if rising_edge(clk) then
-		if reset = '1' then
+		if reset = '0' then
 			refresh <= (others => '0');
 		else
 			refresh <= refresh + 1;
@@ -66,13 +69,13 @@ LED_activate <= refresh(13);  -- Change this division if display flickers
 an_proc : process (clk, reset, LED_activate)
 begin
 	if rising_edge(clk) then
-		if reset = '1' then 
+		if reset = '0' then 
 			AN <= (others => '0'); 
 		else 
 			if LED_activate = '1' then 
-				AN <= "11111110"; -- Activates AN0
+				AN <= "11111010"; -- Activates AN0
 			else
-				AN <= "11111101"; -- Activates AN1
+				AN <= "11110101"; -- Activates AN1
 			end if;
 		end if; 
 	end if;
@@ -82,29 +85,49 @@ end process;
 DcadCnt : process (clk, reset)
 begin
 	if rising_edge(clk) then
-		if reset = '1' then
-			Decad <= (others => '0');
-			tio_pot <= (others => '0');
+		if reset = '0' then
+			sec_ones  <= (others => '0');
+			sec_tens  <= (others => '0');
+      min_ones  <= (others => '0');
+      min_tens  <= (others => '0');
+      h_ones    <= (others => '0');
+      h_tens    <= (others => '0');
 		elsif sec_clk_enable = '1' then
-			Decad <= Decad + 1;
-			if Decad = "1001" then  -- If Decad reaches 9
-				Decad <= (others => '0');
-				tio_pot <= tio_pot + 1;
-				if tio_pot = "0101" then  -- If tio_pot reaches 5
-					tio_pot <= (others => '0');
-				end if;
+			sec_ones <= sec_ones + 1;
+			if sec_ones = "1001" then  -- If sec_ones reaches 9
+				sec_ones <= (others => '0');
+				sec_tens <= sec_tens + 1;
+				if sec_tens = "0101" then  -- If sec_tens reaches 5
+					sec_tens <= (others => '0');
+          min_ones <= min_ones + 1;
+          if min_ones = "1001" then -- If min_ones reaches 9
+            min_ones <= (others => '0');
+            min_tens <= min_tens + 1;
+            if min_tens = "0101" then -- If min_tens reaches 5
+              min_tens <= (others => '0');
+              h_ones <= h_ones + 1;
+              if h_ones = "1001" then -- If h_ones reaches 9
+                h_ones <= (others => '0');
+                h_tens <= h_tens + 1;
+                if h_tens = "0010" then -- If h_tens reaches 2
+                  h_tens <= (others => '0');
+                end if;
+              end if;
+            end if;
+          end if;
+         end if;
 			end if;
 		end if;
 	end if;
 end process;
 
 -- Multiplexer deciding which digit to send, depending on which segment is lit
-MUX : process (Decad, tio_pot, LED_activate)
+MUX : process (sec_ones, sec_tens, LED_activate)
 begin
 	if LED_activate = '1' then
-		num <= Decad; 
+		num <= min_ones; 
 	else
-		num <= tio_pot;
+		num <= min_tens;
 	end if; 
 end process; 
 
@@ -126,4 +149,4 @@ begin
 	end case;
 end process display_output_proc;
 
-end behavioral;
+end ic_arch;
