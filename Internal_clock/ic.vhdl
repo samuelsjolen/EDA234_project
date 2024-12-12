@@ -3,13 +3,12 @@ use IEEE.STD_LOGIC_1164.ALL;
 use IEEE.NUMERIC_STD.ALL;
 
 entity ic is
-    Port ( 
-        SEG        : out STD_LOGIC_VECTOR (7 downto 0);
-        AN         : out STD_LOGIC_VECTOR (7 downto 0);
-        clk        : in STD_LOGIC;
-        reset      : in STD_LOGIC
-        -- sec_ones_db : out std_logic_vector(3 downto 0);     -- Used for debugging
-	    -- sec_tens_db : out std_logic_vector(3 downto 0));  -- Used for debugging
+    Port (
+        clk         : in    std_logic;
+        reset       : in    std_logic; 
+        SEG         : out   std_logic_vector(7 downto 0);
+        AN          : out   std_logic_vector(7 downto 0);
+				reset_lcd		: out		std_logic -- Reset to update the LCD every clock cycle
     );
 end ic;
 
@@ -27,6 +26,9 @@ signal min_ones       : unsigned(3 downto 0);
 signal min_tens       : unsigned(3 downto 0);
 signal h_ones         : unsigned(3 downto 0);
 signal h_tens         : unsigned(3 downto 0);
+signal reset_trigger	: std_logic;
+
+
 
 begin
 
@@ -86,6 +88,7 @@ DcadCnt : process (clk, reset)
 begin
 	if rising_edge(clk) then
 		if reset = '0' then
+			 reset_lcd <= '0';
 			sec_ones  <= (others => '0');
 			sec_tens  <= (others => '0');
       min_ones  <= (others => '0');
@@ -121,6 +124,10 @@ begin
 	end if;
 end process;
 
+rst_lcd_proc : process (reset_trigger)
+
+
+
 -- Multiplexer deciding which digit to send, depending on which segment is lit
 MUX : process (sec_ones, sec_tens, LED_activate)
 begin
@@ -148,5 +155,25 @@ begin
 		when others => SEG <= "11111101"; -- Default (error state)
 	end case;
 end process display_output_proc;
+
+
+-- ASCII Codes Table for Clock Display
+-- | ASCII Code (Binary) | Comment                  |
+-- |---------------------|--------------------------|
+-- | `0011 0000`         | Digit 0                  |
+-- | `0011 0001`         | Digit 1                  |
+-- | `0011 0010`         | Digit 2                  |
+-- | `0011 0011`         | Digit 3                  |
+-- | `0011 0100`         | Digit 4                  |
+-- | `0011 0101`         | Digit 5                  |
+-- | `0011 0110`         | Digit 6                  |
+-- | `0011 0111`         | Digit 7                  |
+-- | `0011 1000`         | Digit 8                  |
+-- | `0011 1001`         | Digit 9                  |
+-- | `0011 1010`         | Colon                    |
+-- | `0010 0000`         | Space (used for padding) | 
+
+
+
 
 end ic_arch;
