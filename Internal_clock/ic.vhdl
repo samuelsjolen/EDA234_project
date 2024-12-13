@@ -4,11 +4,15 @@ use IEEE.NUMERIC_STD.ALL;
 
 entity ic is
     Port (
-        clk         : in    std_logic;
-        reset       : in    std_logic; 
-        SEG         : out   std_logic_vector(7 downto 0);
-        AN          : out   std_logic_vector(7 downto 0);
-				reset_lcd		: out		std_logic -- Reset to update the LCD every clock cycle
+        clk         	: in    std_logic;
+        reset       	: in    std_logic; 
+        SEG         	: out   std_logic_vector(7 downto 0);
+        AN          	: out   std_logic_vector(7 downto 0);
+				reset_lcd			: out		std_logic; -- Reset to update the LCD every clock cycle
+				h_tens_lcd		: out   std_logic_vector(7 downto 0);
+				h_ones_lcd		:	out 	std_logic_vector(7 downto 0);
+				min_ones_lcd	:	out 	std_logic_vector(7 downto 0);
+				min_tens_lcd	:	out 	std_logic_vector(7 downto 0)
     );
 end ic;
 
@@ -26,7 +30,7 @@ signal min_ones       : unsigned(3 downto 0);
 signal min_tens       : unsigned(3 downto 0);
 signal h_ones         : unsigned(3 downto 0);
 signal h_tens         : unsigned(3 downto 0);
-signal reset_trigger	: std_logic;
+signal reset_lcd_flag	: std_logic;
 
 
 
@@ -124,9 +128,18 @@ begin
 	end if;
 end process;
 
-rst_lcd_proc : process (reset_trigger)
-
-
+rst_lcd_proc : process (clk)
+variable counter :=
+begin
+	if reset_lcd_flag = '1'; then
+		reset_lcd <= '0';
+		if counter = 10; -- Change depending on how long reset should be pressed
+			reset_lcd <= '1';
+			reset_flag <= '0';
+		else
+			counter := counter + 1;
+		end if;
+	end if;
 
 -- Multiplexer deciding which digit to send, depending on which segment is lit
 MUX : process (sec_ones, sec_tens, LED_activate)
@@ -138,23 +151,131 @@ begin
 	end if; 
 end process; 
 
--- Display output 
-display_output_proc : process (num)
+an_display_proc : process ()
 begin
 	case num is
-		when "0000" => SEG <= "11000000"; -- Displays 0
-		when "0001" => SEG <= "11111001"; -- Displays 1
-		when "0010" => SEG <= "10100100"; -- Displays 2
-		when "0011" => SEG <= "10110000"; -- Displays 3
-		when "0100" => SEG <= "10011001"; -- Displays 4
-		when "0101" => SEG <= "10010010"; -- Displays 5
-		when "0110" => SEG <= "10000010"; -- Displays 6
-		when "0111" => SEG <= "11111000"; -- Displays 7
-		when "1000" => SEG <= "10000000"; -- Displays 8
-		when "1001" => SEG <= "10010000"; -- Displays 9
-		when others => SEG <= "11111101"; -- Default (error state)
+		when "0000" => 
+			SEG <= "11000000"; -- Displays 0
+		when "0001" => 
+			SEG <= "11111001"; -- Displays 1
+		when "0010" => 
+			SEG <= "10100100"; -- Displays 2
+		when "0011" => 
+			SEG <= "10110000"; -- Displays 3
+		when "0100" => 
+			SEG <= "10011001"; -- Displays 4
+		when "0101" => 
+			SEG <= "10010010"; -- Displays 5
+		when "0110" => 
+			SEG <= "10000010"; -- Displays 6
+		when "0111" => 
+			SEG <= "11111000"; -- Displays 7
+		when "1000" =>
+			SEG <= "10000000"; -- Displays 8
+		when "1001" => 
+			SEG <= "10010000"; -- Displays 9
+		when others => 
+			SEG <= "11111101"; -- Default (error state)
 	end case;
-end process display_output_proc;
+end process;
+
+-- Display output 
+display_min_ones  : process (num)
+begin
+	case min_ones is
+		when "0000" => 
+			min_ones_lcd <= "00110000"; -- Displays 0
+		when "0001" => 
+			min_ones_lcd <= "00110001"; -- Displays 1
+		when "0010" => 
+			min_ones_lcd <= "00110010"; -- Displays 2
+		when "0011" => 
+			min_ones_lcd <= "00110011"; -- Displays 3
+		when "0100" => 
+			min_ones_lcd <= "00110100"; -- Displays 4
+		when "0101" => 
+			min_ones_lcd <= "00110101"; -- Displays 5
+		when "0110" => 
+			min_ones_lcd <= "00110110"; -- Displays 6
+		when "0111" => 
+			min_ones_lcd <= "00110111"; -- Displays 7
+		when "1000" =>
+			min_ones_lcd <= "00111000"; -- Displays 8
+		when "1001" => 
+			min_ones_lcd <= "00111001"; -- Displays 9
+		when others => 
+			min_ones_lcd <= "00101101"; -- Default (error state)
+	end case;
+end process display_min_ones;
+
+-- Display output 
+display_min_tens  : process (num)
+begin
+	case min_tens is
+		when "0000" => 
+			min_tens_lcd <= "00110000"; -- Displays 0
+		when "0001" => 
+			min_tens_lcd <= "00110001"; -- Displays 1
+		when "0010" => 
+			min_tens_lcd <= "00110010"; -- Displays 2
+		when "0011" => 
+			min_tens_lcd <= "00110011"; -- Displays 3
+		when "0100" => 
+			min_tens_lcd <= "00110100"; -- Displays 4
+		when "0101" => 
+			min_tens_lcd <= "00110101"; -- Displays 5
+		when "0110" => 
+			min_tens_lcd <= "00110110"; -- Displays 6
+		when others => 
+			min_tens_lcd <= "00101101"; -- Default (error state)
+	end case;
+end process display_min_tens;
+
+
+-- Display output 
+display_h_ones  : process (num)
+begin
+	case h_ones is
+		when "0000" => 
+			h_ones_lcd <= "00110000"; -- Displays 0
+		when "0001" => 
+			h_ones_lcd <= "00110001"; -- Displays 1
+		when "0010" => 
+			h_ones_lcd <= "00110010"; -- Displays 2
+		when "0011" => 
+			h_ones_lcd <= "00110011"; -- Displays 3
+		when "0100" => 
+			h_ones_lcd <= "00110100"; -- Displays 4
+		when "0101" => 
+			h_ones_lcd <= "00110101"; -- Displays 5
+		when "0110" => 
+			h_ones_lcd <= "00110110"; -- Displays 6
+		when "0111" => 
+			h_ones_lcd <= "00110111"; -- Displays 7
+		when "1000" =>
+			h_ones_lcd <= "00111000"; -- Displays 8
+		when "1001" => 
+			h_ones_lcd <= "00111001"; -- Displays 9
+		when others => 
+			h_ones_lcd <= "00101101"; -- Default (error state)
+	end case;
+end process display_h_ones;
+
+-- Display output 
+display_h_ones  : process (num)
+begin
+	case h_tens is
+		when "0000" => 
+			h_tens_lcd <= "00110000"; -- Displays 0
+		when "0001" => 
+			h_tens_lcd <= "00110001"; -- Displays 1
+		when "0010" => 
+			h_tens_lcd <= "00110010"; -- Displays 2
+		when others => 
+			h_tens_lcd <= "00101101"; -- Default (error state)
+	end case;
+end process display_h_ones;
+
 
 
 -- ASCII Codes Table for Clock Display
