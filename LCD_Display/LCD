@@ -9,7 +9,11 @@ ENTITY lcd_init IS
         lcd_rs  : OUT std_logic;                 -- Register select
         lcd_rw  : OUT std_logic;                 -- Read/write
         lcd_e   : OUT std_logic;                 -- Enable
-        lcd_db  : INOUT std_logic_vector(7 DOWNTO 0)  -- Data bus
+        lcd_db  : INOUT std_logic_vector(7 DOWNTO 0);  -- Data bus
+        HOUR_ONE    : IN    STD_LOGIC_VECTOR (7 DOWNTO 0);
+        HOUR_TENS   : IN    STD_LOGIC_VECTOR (7 DOWNTO 0);
+        MIN_ONE : IN  STD_LOGIC_VECTOR(7 DOWNTO 0);
+        MIN_TENS : IN STD_LOGIC_VECTOR ( 7 DOWNTO 0)
     );
 END ENTITY;
 
@@ -33,18 +37,24 @@ ARCHITECTURE behavior OF lcd_init IS
     CONSTANT CMD_CLEAR          : std_logic_vector(7 DOWNTO 0) := "00000001"; -- 0x01
     CONSTANT CMD_ENTRY_MODE     : std_logic_vector(7 DOWNTO 0) := "00000110"; -- 0x06
     CONSTANT CMD_DISPLAY_ON     : std_logic_vector(7 DOWNTO 0) := "00001100"; -- 0x0C
-
+   
+    ----------------------------------------------------------------------------
+    --SIGNALS FOR LCD
+    ----------------------------------------------------------------------------
+   SIGNAL HOUR_TEN   :   std_logic_vector (7 DOWNTO 0);
+   SIGNAL HOUR_DIGIT :   std_logic_vector (7 DOWNTO 0);
+   SIGNAL COLON      :   std_logic_vector (7 DOWNTO 0);
+   SIGNAL MIN_TEN    :   std_logic_vector (7 DOWNTO 0);
+   SIGNAL MIN_DIGIT  :   std_logic_vector (7 DOWNTO 0);
+       
+   
     ----------------------------------------------------------------------------
     -- Characters for "11:45"
     ----------------------------------------------------------------------------
     TYPE msg_array_type IS ARRAY(0 TO 4) OF std_logic_vector(7 DOWNTO 0);
 
-    CONSTANT MSG : msg_array_type := (
-        "00110001", -- '1'
-        "00110001", -- '1'
-        "00111010", -- ':'
-        "00110100", -- '4'
-        "00110101"  -- '5'
+    SIGNAL MSG : msg_array_type := (
+    (OTHERS => (OTHERS => '0'))
     );
 
     ----------------------------------------------------------------------------
@@ -100,7 +110,7 @@ ARCHITECTURE behavior OF lcd_init IS
     SIGNAL reg_rw : std_logic := '0';
     SIGNAL reg_e  : std_logic := '0';
     SIGNAL reg_db : std_logic_vector(7 DOWNTO 0) := (OTHERS => '0');
-
+   
     SIGNAL cmd_data_value : std_logic_vector(7 DOWNTO 0) := (OTHERS => '0');
     SIGNAL cmd_index      : integer := 0;
 
@@ -108,12 +118,33 @@ ARCHITECTURE behavior OF lcd_init IS
     SIGNAL msg_index : integer := 0;
 
 BEGIN
-
     lcd_rs <= reg_rs;
     lcd_rw <= reg_rw;
     lcd_e  <= reg_e;
     lcd_db <= reg_db WHEN reg_rw='0' ELSE (OTHERS => 'Z'); --tri-state condition
-
+   
+    HOUR_TEN <= "00110001";
+    HOUR_DIGIT <="00110011";
+    COLON <= "00111010";
+    MIN_TEN <= "00110100";
+    MIN_DIGIT <= "00110101";
+   
+    HOUR_TEN <= HOUR_TENS;
+    HOUR_DIGIT <= HOUR_ONE;
+    MIN_TEN <= MIN_TENS;
+    MIN_DIGIT <= MIN_ONE;
+    ------------------------------------------------------------------------------------------------
+    -- PROCESS FOR UPDATING DISPLAY FROM INTERNAL
+    ------------------------------------------------------------------------------------------------
+    PROCESS(HOUR_TEN, HOUR_DIGIT, MIN_TEN, MIN_DIGIT)
+    BEGIN
+        MSG(0) <= HOUR_TEN;
+        MSG(1) <= HOUR_DIGIT;
+        MSG(2) <= COLON;
+        MSG(3) <= MIN_TEN;
+        MSG(4) <= MIN_DIGIT;
+    END PROCESS;
+           
     PROCESS(clk, reset)
     BEGIN
         IF reset = '0' THEN
