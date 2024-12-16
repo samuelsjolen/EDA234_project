@@ -49,7 +49,7 @@ begin
 			counter_sec <= 0;
 			sec_clk_enable <= '0';
 		else
-			if counter_sec = 25000000 then  -- Adjust based on input clock frequency
+			if counter_sec = 100000000 then  -- Adjust based on input clock frequency
 				counter_sec <= 0;
 				sec_clk_enable <= '1';       -- Trigger events that depend on 1-second intervals
 			else
@@ -82,9 +82,9 @@ begin
 			AN <= (others => '0'); 
 		else 
 			if LED_activate = '1' then 
-				AN <= "11111100"; -- Activates AN0
+				AN <= "11111110"; -- Activates AN0
 			else
-				AN <= "11110011"; -- Activates AN1
+				AN <= "11111101"; -- Activates AN1
 			end if;
 		end if; 
 	end if;
@@ -138,8 +138,11 @@ end process;
 rst_lcd_proc : process (clk)
 variable counter : integer :=0;
 begin
-	if reset_lcd_flag = '1' then	
-		if counter = 10 then -- Change depending on how long reset should be pressed
+	if reset_lcd_flag = '1' then
+		if reset = '0' then
+			reset_lcd_int <= '0';
+		end if;
+		if counter = 1000 then -- Change depending on how long reset should be pressed
 			reset_lcd_int <= '1';
 		else
 			counter := counter + 1;
@@ -152,9 +155,9 @@ end process;
 MUX : process (sec_ones, sec_tens, LED_activate)
 begin
 	if LED_activate = '1' then
-		num <= min_ones; 
+		num <= sec_ones; 
 	else
-		num <= min_tens;
+		num <= sec_tens;
 	end if; 
 end process; 
 
