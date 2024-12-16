@@ -138,15 +138,17 @@ end process;
 rst_lcd_proc : process (clk)
 variable counter : integer :=0;
 begin
-	if reset_lcd_flag = '1' then
-		if reset = '0' then
-			reset_lcd_int <= '0';
-		end if;
-		if counter = 1000 then -- Change depending on how long reset should be pressed
-			reset_lcd_int <= '1';
-		else
-			counter := counter + 1;
-			reset_lcd_int <= '0';
+	if rising_edge(clk) then
+			if reset = '0' then
+				reset_lcd_int <= '0';
+			end if;
+			if reset_lcd_flag = '1' then
+				if counter = 1000 then -- Change depending on how long reset should be pressed
+					reset_lcd_int <= '1';
+				else
+					counter := counter + 1;
+					reset_lcd_int <= '0';
+				end if;
 		end if;
 	end if;
 end process;
