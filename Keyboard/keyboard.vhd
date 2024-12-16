@@ -21,6 +21,10 @@ architecture keyboard_arch of keyboard is
   signal seg_buffer     : std_logic_vector(7 downto 0);
   signal slow_clk       : std_logic := '0';
 
+
+  ---------- STATE DECLARATIONS ----------
+
+
 begin
 
     -- Process used to generate a slow clock
