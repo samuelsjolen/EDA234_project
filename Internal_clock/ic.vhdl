@@ -43,7 +43,7 @@ begin
 			counter_sec <= 0;
 			sec_clk_enable <= '0';
 		else
-			if counter_sec = 1000000 then--00 then  -- Adjust based on input clock frequency
+			if counter_sec = 100000 then--000 then  -- Adjust based on input clock frequency
 				counter_sec <= 0;
 				sec_clk_enable <= '1';       -- Trigger events that depend on 1-second intervals
 			else
@@ -121,17 +121,22 @@ begin
 				if sec_tens = "0101" then  -- If sec_tens reaches 5
 					sec_tens <= (others => '0');
                     min_ones <= min_ones + 1;
-	          if min_ones = "1001" then -- If min_ones reaches 9
-            min_ones <= (others => '0');
-            min_tens <= min_tens + 1;
-            if min_tens = "0101" then -- If min_tens reaches 5
-              min_tens <= (others => '0');
-              h_ones <= h_ones + 1;
-              if h_ones = "1001" then -- If h_ones reaches 9
-                h_ones <= (others => '0');
-                h_tens <= h_tens + 1;
-                if h_tens = "0010" then -- If h_tens reaches 2
-                  h_tens <= (others => '0');
+	               if min_ones = "1001" then -- If min_ones reaches 9
+                         min_ones <= (others => '0');
+                         min_tens <= min_tens + 1;
+                        if min_tens = "0101" then -- If min_tens reaches 5
+                        min_tens <= (others => '0');
+                        h_ones <= h_ones + 1;
+               if h_ones = "0011" then
+                    if h_tens = "0010" then
+                        h_ones <=  (others => '0');
+                        h_tens <=  (others => '0');
+                    end if;
+                    elsif h_ones = "1001" then
+                    h_ones <= (others => '0');
+                    h_tens <= h_tens + 1;
+                --if h_tens = "0010" then -- If h_tens reaches 2
+                  --h_tens <= (others => '0');
                 end if;
               end if;
             end if;
@@ -139,7 +144,7 @@ begin
          end if;
 			end if;
 		end if;
-	end if;
+	--end if;
 end process;
 
 an_display_proc : process (num)
