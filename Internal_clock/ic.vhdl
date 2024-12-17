@@ -25,8 +25,8 @@ signal min_ones       : unsigned(3 downto 0);
 signal min_tens       : unsigned(3 downto 0);
 signal h_ones         : unsigned(3 downto 0);
 signal h_tens         : unsigned(3 downto 0);
-signal reset_lcd_flag	: std_logic;
-signal reset_lcd_int	: std_logic;
+--signal reset_lcd_flag	: std_logic;
+--signal reset_lcd_int	: std_logic;
 
 
 
@@ -43,7 +43,7 @@ begin
 			counter_sec <= 0;
 			sec_clk_enable <= '0';
 		else
-			if counter_sec = 100000000 then  -- Adjust based on input clock frequency
+			if counter_sec = 1000000 then--00 then  -- Adjust based on input clock frequency
 				counter_sec <= 0;
 				sec_clk_enable <= '1';       -- Trigger events that depend on 1-second intervals
 			else
@@ -92,13 +92,13 @@ end process;
 MUX : process (sec_ones, sec_tens, LED_activate)
 begin
 	if LED_activate = "00" then
-		num <= sec_ones; 
-	elsif LED_activate = "01" then
-		num <= sec_tens;
-	elsif LED_activate = "10" then
 		num <= min_ones; 
-	else
+	elsif LED_activate = "01" then
 		num <= min_tens;
+	elsif LED_activate = "10" then
+		num <= h_ones; 
+	else
+		num <= h_tens;
 	end if; 
 end process; 
 
@@ -107,7 +107,6 @@ clock_counters : process (clk, reset)
 begin
 	if rising_edge(clk) then
 		if reset = '0' then
-			 reset_lcd <= '0';
 			sec_ones  <= (others => '0');
 			sec_tens  <= (others => '0');
       min_ones  <= (others => '0');
@@ -121,11 +120,7 @@ begin
 				sec_tens <= sec_tens + 1;
 				if sec_tens = "0101" then  -- If sec_tens reaches 5
 					sec_tens <= (others => '0');
-          min_ones <= min_ones + 1;
-					reset_lcd_flag <= '1';
-						if reset_lcd_int = '1' then
-							reset_lcd_flag <= '0';
-						end if;
+                    min_ones <= min_ones + 1;
 	          if min_ones = "1001" then -- If min_ones reaches 9
             min_ones <= (others => '0');
             min_tens <= min_tens + 1;
