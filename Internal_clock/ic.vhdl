@@ -7,12 +7,7 @@ entity ic is
         clk         	: in    std_logic;
         reset       	: in    std_logic; 
         SEG         	: out   std_logic_vector(7 downto 0);
-        AN          	: out   std_logic_vector(7 downto 0);
-				reset_lcd			: out		std_logic; -- Reset to update the LCD every clock cycle
-				h_tens_lcd		: out   std_logic_vector(7 downto 0);
-				h_ones_lcd		:	out 	std_logic_vector(7 downto 0);
-				min_ones_lcd	:	out 	std_logic_vector(7 downto 0);
-				min_tens_lcd	:	out 	std_logic_vector(7 downto 0)
+        AN          	: out   std_logic_vector(7 downto 0)
     );
 end ic;
 
@@ -20,7 +15,7 @@ architecture ic_arch of ic is
 
 -- Internal signals
 signal sec_clk_enable : STD_LOGIC := '0'; -- Enable signal instead of using derived clock
-signal LED_activate   : STD_LOGIC; 
+signal LED_activate   : std_logic_vector(1 downto 0); 
 signal refresh        : Unsigned(18 downto 0); 
 signal counter_sec    : integer := 0;
 signal num            : unsigned(3 downto 0);   
@@ -37,7 +32,6 @@ signal reset_lcd_int	: std_logic;
 
 begin
 
-	reset_lcd <= reset_lcd_int;
 
 -- Reset logic, inverted on board
 
@@ -72,7 +66,7 @@ begin
 	end if;
 end process;
 
-LED_activate <= refresh(13);  -- Change this division if display flickers
+LED_activate <= refresh(12) & refresh(13);  -- Change this division if display flickers
 
 -- Process to switch between AN1 and AN0
 an_proc : process (clk, reset, LED_activate)
@@ -81,14 +75,32 @@ begin
 		if reset = '0' then 
 			AN <= (others => '0'); 
 		else 
-			if LED_activate = '1' then 
+			if LED_activate = "00" then 
 				AN <= "11111110"; -- Activates AN0
-			else
+			elsif LED_activate = "01" then 
 				AN <= "11111101"; -- Activates AN1
+			elsif LED_activate = "10" then
+				AN <= "11111011"; -- Activates AN2
+			else
+				AN <= "11110111"; -- Activates AN3
 			end if;
 		end if; 
 	end if;
 end process;
+
+-- Multiplexer deciding which digit to send, depending on which segment is lit
+MUX : process (sec_ones, sec_tens, LED_activate)
+begin
+	if LED_activate = "00" then
+		num <= sec_ones; 
+	elsif LED_activate = "01" then
+		num <= sec_tens;
+	elsif LED_activate = "10" then
+		num <= min_ones; 
+	else
+		num <= min_tens;
+	end if; 
+end process; 
 
 -- Counter for displaying values
 clock_counters : process (clk, reset)
@@ -135,32 +147,6 @@ begin
 	end if;
 end process;
 
-rst_lcd_proc : process (clk)
-variable counter : integer :=0;
-begin
-	if reset_lcd_flag = '1' then
-		if reset = '0' then
-			reset_lcd_int <= '0';
-		end if;
-		if counter = 1000 then -- Change depending on how long reset should be pressed
-			reset_lcd_int <= '1';
-		else
-			counter := counter + 1;
-			reset_lcd_int <= '0';
-		end if;
-	end if;
-end process;
-
--- Multiplexer deciding which digit to send, depending on which segment is lit
-MUX : process (sec_ones, sec_tens, LED_activate)
-begin
-	if LED_activate = '1' then
-		num <= sec_ones; 
-	else
-		num <= sec_tens;
-	end if; 
-end process; 
-
 an_display_proc : process (num)
 begin
 	case num is
@@ -188,103 +174,6 @@ begin
 			SEG <= "11111101"; -- Default (error state)
 	end case;
 end process;
-
--- Display output 
-display_min_ones  : process (min_ones)
-begin
-	case min_ones is
-		when "0000" => 
-			min_ones_lcd <= "00110000"; -- Displays 0
-		when "0001" => 
-			min_ones_lcd <= "00110001"; -- Displays 1
-		when "0010" => 
-			min_ones_lcd <= "00110010"; -- Displays 2
-		when "0011" => 
-			min_ones_lcd <= "00110011"; -- Displays 3
-		when "0100" => 
-			min_ones_lcd <= "00110100"; -- Displays 4
-		when "0101" => 
-			min_ones_lcd <= "00110101"; -- Displays 5
-		when "0110" => 
-			min_ones_lcd <= "00110110"; -- Displays 6
-		when "0111" => 
-			min_ones_lcd <= "00110111"; -- Displays 7
-		when "1000" =>
-			min_ones_lcd <= "00111000"; -- Displays 8
-		when "1001" => 
-			min_ones_lcd <= "00111001"; -- Displays 9
-		when others => 
-			min_ones_lcd <= "00101101"; -- Default (error state)
-	end case;
-end process display_min_ones;
-
--- Display output 
-display_min_tens  : process (min_tens)
-begin
-	case min_tens is
-		when "0000" => 
-			min_tens_lcd <= "00110000"; -- Displays 0
-		when "0001" => 
-			min_tens_lcd <= "00110001"; -- Displays 1
-		when "0010" => 
-			min_tens_lcd <= "00110010"; -- Displays 2
-		when "0011" => 
-			min_tens_lcd <= "00110011"; -- Displays 3
-		when "0100" => 
-			min_tens_lcd <= "00110100"; -- Displays 4
-		when "0101" => 
-			min_tens_lcd <= "00110101"; -- Displays 5
-		when "0110" => 
-			min_tens_lcd <= "00110110"; -- Displays 6
-		when others => 
-			min_tens_lcd <= "00101101"; -- Default (error state)
-	end case;
-end process display_min_tens;
-
-
--- Display output 
-display_h_ones  : process (h_ones)
-begin
-	case h_ones is
-		when "0000" => 
-			h_ones_lcd <= "00110000"; -- Displays 0
-		when "0001" => 
-			h_ones_lcd <= "00110001"; -- Displays 1
-		when "0010" => 
-			h_ones_lcd <= "00110010"; -- Displays 2
-		when "0011" => 
-			h_ones_lcd <= "00110011"; -- Displays 3
-		when "0100" => 
-			h_ones_lcd <= "00110100"; -- Displays 4
-		when "0101" => 
-			h_ones_lcd <= "00110101"; -- Displays 5
-		when "0110" => 
-			h_ones_lcd <= "00110110"; -- Displays 6
-		when "0111" => 
-			h_ones_lcd <= "00110111"; -- Displays 7
-		when "1000" =>
-			h_ones_lcd <= "00111000"; -- Displays 8
-		when "1001" => 
-			h_ones_lcd <= "00111001"; -- Displays 9
-		when others => 
-			h_ones_lcd <= "00101101"; -- Default (error state)
-	end case;
-end process display_h_ones;
-
--- Display output 
-display_h_tens  : process (h_tens)
-begin
-	case h_tens is
-		when "0000" => 
-			h_tens_lcd <= "00110000"; -- Displays 0
-		when "0001" => 
-			h_tens_lcd <= "00110001"; -- Displays 1
-		when "0010" => 
-			h_tens_lcd <= "00110010"; -- Displays 2
-		when others => 
-			h_tens_lcd <= "00101101"; -- Default (error state)
-	end case;
-end process display_h_tens;
 
 
 -- ASCII Codes Table for Clock Display
