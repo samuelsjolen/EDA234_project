@@ -15,39 +15,7 @@ end entity;
 
 architecture keyboard_arch of keyboard is
   ---------- TYPE DECLARATIONS ----------
-  type states is (
-    idle,
-    set_h_tens,
-    set_h_ones,
-    set_min_tens,
-    set_min_ones,
-    alarm_set,
-    alarm_active
-  );
   ---------- SIGNAL DECLARATIONS ----------
-  -- FLAGS
-  signal alarm_set_flag   :std_logic;
-  signal flag_h_tens      :std_logic;
-  signal flag_h_ones      :std_logic; 
-  signal flag_min_tens    :std_logic; 
-  signal flag_min_ones    :std_logic; 
-
-  -- STATES
-  signal current_state  : states;
-  signal next_state     : states;
-
-  -- SEG OUTPUTS
-  signal seg_h_tens   : std_logic_vector(7 downto 0):= "00000000";
-  signal seg_h_ones   : std_logic_vector(7 downto 0):= "00000000";
-  signal seg_min_tens : std_logic_vector(7 downto 0):= "00000000";
-  signal seg_min_ones : std_logic_vector(7 downto 0):= "00000000";
-
-  -- ALARM SIGNALS
-  signal alarm_h_tens   : std_logic_vector(7 downto 0);
-  signal alarm_h_ones   : std_logic_vector(7 downto 0);
-  signal alarm_min_tens : std_logic_vector(7 downto 0);
-  signal alarm_min_ones : std_logic_vector(7 downto 0);
-
   -- VARIOUS
   signal row_reg        : unsigned(3 downto 0);
   signal shifted_out    : std_logic;
@@ -149,7 +117,7 @@ begin
           elsif col = "1011" then
             seg_buffer <= "10110000"; -- Displays 3 (0xB0)
           elsif col = "0111" then
-            alarm_set_flag <= '1';
+            seg_buffer <= "10001000"; -- Displays A (0x88)
           else
             seg_buffer <= "11111111";
           end if;
@@ -192,60 +160,5 @@ begin
         end if;
     end if;
 end process;
-
-
- -- -- Handles value of current state
- -- state_switch_proc : process ()
- -- begin
- --  if rising_edge(clk)
- --    if reset = '0' then
- --      current_state <= idle;
- --    else 
- --      current_state <= next_state;
- --    end if;
- -- end process;
-
-
---   -- Handles when and which state to switch to
--- switch_state_proc : process ()
--- begin
---   case current_state is 
---      when idle =>
---        if alarm_set = '1' then
---          next_state <= set_h_tens;
---        end if;
---      when set_h_tens =>
---        if flag_h_tens = '1' then
---          next_state <= set_h_ones;
---        end if;
---      when set_h_ones =>
---        if flag_h_ones = '1' then
---          next_state <= set_min_tens;
---        end if;
---      when set_min_tens =>
---        if flag_min_tens = '1' then
---          next_state <= set_min_ones
---        end if;
---      when set_min_ones =>
---        if flag_min_ones = '1' then
---          next_state <= alarm_set;
---           --next_state <= set_h_tens;
---        end if;
---        -- Nästa steg, få den att loop till timmar om inte en knapp på keypad trycks ner
---        --if flag_set_alarm = '1' then
---    end case;       
---  end process;
-   
--- func_state_proc : process ()
--- begin
---  case current_state is
---    when idle =>
---    h_tens_seg; <= 
---    when set_h_tens =>
---      flag_h_tens = '1' then
---    when set_h_one =>
---      set_
---
---   end process;
 
 end architecture;
