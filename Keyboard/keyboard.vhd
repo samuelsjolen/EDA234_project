@@ -4,17 +4,34 @@ use ieee.numeric_std.all;
 
 entity keyboard is
   port (
-    clk     : in  std_logic;
-    reset   : in  std_logic;
-    row     : out std_logic_vector(3 downto 0); -- Pin ja1 -> ja4
-    col     : in  std_logic_vector(3 downto 0); -- Pin ja7 -> ja10
-    seg     : out std_logic_vector(7 downto 0); -- Output on segment display
-    AN      : out std_logic_vector(7 downto 0)  -- Decides which segment to output on
+    clk             : in  std_logic;
+    reset           : in  std_logic;
+    row             : out std_logic_vector(3 downto 0); -- Pin ja1 -> ja4
+    col             : in  std_logic_vector(3 downto 0); -- Pin ja7 -> ja10
+    seg             : out std_logic_vector(7 downto 0); -- Output on segment display
+    AN              : out std_logic_vector(7 downto 0)--;  -- Decides which segment to output on
+   -- sclk            : out std_logic; -- TB
+   -- row_reg_tb      : out unsigned(3 downto 0); -- TB
+   -- state           : out std_logic_vector(3 downto 0); -- TB
+   -- if_active       : out std_logic; -- TB
+   -- an_lit_tb       : out std_logic; -- TB
+   -- seg_h_tens_tb   : out std_logic_vector(7 downto 0); -- TB 
+   -- seg_h_ones_tb   : out std_logic_vector(7 downto 0); -- TB
+   -- seg_m_tens_tb   : out std_logic_vector(7 downto 0); -- TB
+   -- seg_m_ones_tb   : out std_logic_vector(7 downto 0)  -- TB
   );
 end entity;
 
 architecture keyboard_arch of keyboard is
   ---------- TYPE DECLARATIONS ----------
+  type states is(
+    idle,
+    set_h_tens,
+    set_h_ones,
+    set_m_tens,
+    set_m_ones
+  );
+
   ---------- SIGNAL DECLARATIONS ----------
   -- VARIOUS
   signal row_reg        : unsigned(3 downto 0);
@@ -25,12 +42,37 @@ architecture keyboard_arch of keyboard is
   signal slow_clk       : std_logic := '0';
 
   -- 7-SEG SIGNALS
+  signal an_lit         : std_logic;
   signal refresh        : Unsigned(18 downto 0); 
   signal LED_activate   : std_logic_vector(1 downto 0); 
 
+  -- STATE SIGNALS
+  signal current_state  : states:= idle;
+  signal delay_state    : states;
+  signal next_state     : states:= idle;
+
+  -- Clock numbering
+  signal seg_h_tens     : std_logic_vector(7 downto 0);
+  signal seg_h_ones     : std_logic_vector(7 downto 0);
+  signal seg_m_tens     : std_logic_vector(7 downto 0);
+  signal seg_m_ones     : std_logic_vector(7 downto 0);
+
+  -- FLAGS
+  
 
 
 begin
+row <= row_internal; -- Flyttade ur reg_proc
+
+-- TB --
+--sclk <= slow_clk;             -- TB
+--row_reg_tb <= row_reg;        -- TB 
+--an_lit_tb <= an_lit;          -- TB
+--
+--seg_h_tens_tb <= seg_h_tens;  -- TB
+--seg_h_ones_tb <= seg_h_ones;  -- TB
+--seg_m_tens_tb <= seg_m_tens;  -- TB
+--seg_m_ones_tb <= seg_m_ones;  -- TB
 
 
   -- Process used to generate a slow clock
@@ -43,7 +85,7 @@ begin
     else
         if rising_edge(clk) then
             counter := counter + 1;
-            if counter = 10000 then
+            if counter = 100 then--00 then
                 slow_clk <= not slow_clk;
                 counter := 0;
             end if;
@@ -72,37 +114,44 @@ begin
 	if rising_edge(clk) then
 		if reset = '0' then 
 			AN <= (others => '0'); 
-		else 
-			if LED_activate = "00" then 
-				AN <= "11111110"; -- Activates AN0
-			elsif LED_activate = "01" then 
-				AN <= "11111101"; -- Activates AN1
-			elsif LED_activate = "10" then
-				AN <= "11111011"; -- Activates AN2
-			else
-				AN <= "11110111"; -- Activates AN3
-			end if;
+    else
+     if an_lit = '1' then
+        if LED_activate = "00" then 
+          seg <= seg_m_ones;
+          AN <= "11111110"; -- Activates AN0
+        elsif LED_activate = "01" then 
+          seg <= seg_m_tens;
+          AN <= "11111101"; -- Activates AN1
+        elsif LED_activate = "10" then
+          seg <= seg_h_ones;
+          AN <= "11111011"; -- Activates AN2
+        else
+          seg <= seg_h_tens;
+          AN <= "11110111"; -- Activates AN3
+        end if;
+     else
+        AN <= (others => '1'); 
+		  end if;
 		end if; 
 	end if;
 end process;
 
 -- Process used to scan between the rows
-reg_proc : process (slow_clk)
+reg_proc : process (slow_clk, reset)
 begin
   if reset = '0' then
-    seg <= (others => '0');
+    --seg <= (others => '0');
     row_internal <= (others => '1');
     row_reg <= "1110";
     shifted_out <= '1';
     col_reg <= (others => '1');
   elsif rising_edge(slow_clk) then
-    seg <= seg_buffer;
+    --seg <= seg_buffer;
     shifted_out <= row_reg(3); -- Save the last bit of row_reg
     row_reg <= row_reg(2 downto 0) & row_reg(3); -- Shift row_reg
     row_internal <= std_logic_vector(row_reg); -- Convert to std_logic_vector
     col_reg <= col;
   end if;
-  row <= row_internal;
 end process;
 
 -- Process used to output correct number, depending on active row
@@ -161,4 +210,195 @@ begin
     end if;
 end process;
 
+switch_state_proc : process (reset, next_state, clk)
+begin
+  if rising_edge(clk) then
+    if reset = '0' then
+      current_state <= idle;
+    else 
+      current_state <= next_state;
+    end if;
+  end if;
+end process;
+
+
+
+next_state_proc : process (clk)
+  variable counter : integer := 0;
+begin
+  if rising_edge(clk) then
+  case current_state is
+
+    -- STATE FOR IDLE --
+    when idle =>
+      --state <= "0000";
+      an_lit <= '0';
+      seg_h_tens <= "10111111";
+      seg_h_ones <= "10111111";
+      seg_m_tens <= "10111111";
+      seg_m_ones <= "10111111";
+        if seg_buffer = "10001000" then  -- If A is pressed
+          next_state <= set_h_tens;
+        end if;
+        if seg_buffer = "10100001" then
+          next_state <= idle;
+        end if;
+
+      -- STATE FOR SETTING HOUR FIRST DIGIT --
+    when set_h_tens =>
+      --state <= "0001";
+      an_lit <= '1';
+      if seg_buffer = "11111001" then     -- If 1 is pressed (0xF9)
+        seg_h_tens <= "11111001";
+        next_state <= set_h_ones;
+      end if;
+      if seg_buffer = "10100100" then  -- If 2 is pressed (0xA4)
+        seg_h_tens <= "10100100"; 
+        next_state <= set_h_ones;
+      end if;
+      if seg_buffer = "11000000" then  -- If 0 is pressed
+        seg_h_tens <= "11000000"; 
+        next_state <= set_h_ones;
+      end if;   
+
+      -- STATE FOR SETTING HOUR SECOND DIGIT --
+      when set_h_ones =>
+      --state <= "0010";
+      if counter = 50000000 then
+        an_lit <= '1';
+        if seg_h_tens = "10100100" then       -- If tens = 2, then only 0-4 acceptable inputs
+          if seg_buffer = "11111001" then     -- If 1 is pressed (0xF9)
+            seg_h_ones <= "11111001";
+            next_state <= set_m_tens;
+            counter := 0;
+          elsif seg_buffer = "10100100" then  -- If 2 is pressed (0xA4)
+            seg_h_ones <= "10100100"; 
+            next_state <= set_m_tens;
+            counter := 0;
+          elsif seg_buffer = "10110000" then  -- If 3 is pressed (0xA4)
+            seg_h_ones <= "10110000"; 
+            next_state <= set_m_tens;
+            counter := 0; 
+          elsif seg_buffer = "10011001" then  -- If 4 is pressed (0xA4)
+            seg_h_ones <= "10011001"; 
+            next_state <= set_m_tens;
+            counter := 0;
+          elsif seg_buffer = "11000000" then  -- If 0 is pressed (0xA4)
+            seg_h_ones <= "11000000"; 
+            next_state <= set_m_tens;
+            counter := 0;
+          else null;
+          end if;  
+        else 
+          if seg_buffer = "11111001" then     -- If 1 is pressed (0xF9)
+            seg_h_ones <= "11111001";
+            next_state <= set_m_tens;
+            counter := 0;
+          elsif seg_buffer = "10100100" then  -- If 2 is pressed (0xA4)
+            seg_h_ones <= "10100100"; 
+            next_state <= set_m_tens;
+            counter := 0;
+          elsif seg_buffer = "10110000" then  -- If 3 is pressed (0xA4)
+            seg_h_ones <= "10110000"; 
+            next_state <= set_m_tens;
+            counter := 0; 
+          elsif seg_buffer = "10011001" then  -- If 4 is pressed (0xA4)
+            seg_h_ones <= "10011001"; 
+            next_state <= set_m_tens;
+            counter := 0;
+          elsif seg_buffer = "10010010" then  -- If 5 is pressed (0xA4)
+            seg_h_ones <= "10010010"; 
+            next_state <= set_m_tens;
+            counter := 0;
+          elsif seg_buffer = "10000010" then  -- If 6 is pressed (0xA4)
+            seg_h_ones <= "10000010"; 
+            next_state <= set_m_tens;
+            counter := 0;
+          elsif seg_buffer = "11111000" then  -- If 7 is pressed (0xA4)
+            seg_h_ones <= "11111000"; 
+            next_state <= set_m_tens;
+            counter := 0;
+          elsif seg_buffer = "10000000" then  -- If 8 is pressed (0xA4)
+            seg_h_ones <= "10000000"; 
+            next_state <= set_m_tens;
+            counter := 0;
+          elsif seg_buffer = "10010000" then  -- If 9 is pressed (0xA4)
+            seg_h_ones <= "10010000"; 
+            next_state <= set_m_tens;
+            counter := 0;
+          elsif seg_buffer = "11000000" then  -- If 0 is pressed (0xA4)
+            seg_h_ones <= "11000000"; 
+            next_state <= set_m_tens;
+            counter := 0;
+          else null;
+          end if;  
+        end if;
+      else 
+        counter := counter + 1;
+      end if;
+
+
+      -- STATE FOR SETTING MINUTES FIRST DIGIGT --
+      when set_m_tens =>
+      if counter = 50000000 then
+        an_lit <= '1';
+        if seg_buffer = "11111001" then     -- If 1 is pressed (0xF9)
+          seg_m_tens <= "11111001";
+          next_state <= set_m_ones;
+          counter := 0;
+        elsif seg_buffer = "10100100" then  -- If 2 is pressed (0xA4)
+          seg_m_tens <= "10100100"; 
+          next_state <= set_m_ones;
+          counter := 0;
+        elsif seg_buffer = "10110000" then  -- If 3 is pressed (0xA4)
+          seg_m_tens <= "10110000"; 
+          next_state <= set_m_ones;
+          counter := 0; 
+        elsif seg_buffer = "10011001" then  -- If 4 is pressed (0xA4)
+          seg_m_tens <= "10011001"; 
+          next_state <= set_m_ones;
+          counter := 0;
+        elsif seg_buffer = "10010010" then  -- If 5 is pressed (0xA4)
+          seg_m_tens <= "10010010"; 
+          next_state <= set_m_ones;
+          counter := 0;
+        elsif seg_buffer = "11000000" then  -- If 0 is pressed (0xA4)
+          seg_m_tens <= "11000000"; 
+          next_state <= set_m_ones;
+          counter := 0;
+        else null;
+        end if;  
+      else 
+        counter := counter + 1;
+      end if;
+        null;
+
+      -- STATE FOR SETTING MINUTES SECOND DIGIT --
+      when set_m_ones =>
+        NULL;
+    end case;
+  end if;
+end process;
+
+--func_state_proc : process (current_state)
+--begin
+--  case current_state is
+--    when idle =>
+--      an_lit <= '0';
+--      state <= "0000";
+--      if seg_buffer = "11111001" then -- Om knapp 1 trycks, 
+--        seg_h_tens <= "11111001";
+--      elsif seg_buffer = "10100100" then
+--        seg_h_tens <= "10100100";
+--      else null;
+--      end if;
+--    when set_h_tens =>
+--      an_lit <= '1';
+--      state <= "0001";
+--
+--    when set_h_ones =>
+--      state <= "0010";
+--  end case; 
+--end process;
+--
 end architecture;
