@@ -107,16 +107,4 @@ begin
     col <= "ZZZZ";
     wait;
    end process;
-
---  -- Case process
---  case_proc : process 
---  begin
---    case row is
---      when "1110" =>
---        col <= "0111";
---      when "" =>
---        col <= "ZZZZ";
---    end case;
---    wait for clk_period; -- Add wait statement to avoid infinite loop
---  end process; 
 end architecture;
