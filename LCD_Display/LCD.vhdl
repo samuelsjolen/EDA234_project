@@ -57,6 +57,12 @@ ARCHITECTURE behavior OF lcd_init IS
     (OTHERS => (OTHERS => '0'))
     );
 
+    constant COUNTER_WIDTH : integer := 33;
+    constant CNT_MAX : unsigned(COUNTER_WIDTH-1 downto 0) 
+        := "101100111000110101111111000000000";
+
+    signal count : unsigned(COUNTER_WIDTH-1 downto 0) := (others => '0');
+    signal pulse_reg : STD_LOGIC := '0';
     ----------------------------------------------------------------------------
     -- Final Initialization Commands
     ----------------------------------------------------------------------------
@@ -133,6 +139,27 @@ BEGIN
     HOUR_DIGIT <= HOUR_ONE;
     MIN_TEN <= MIN_TENS;
     MIN_DIGIT <= MIN_ONE;
+
+    pulse_o <= pulse_reg;
+
+    process(clk, reset)
+    begin
+        if reset = '0' then
+            count <= (others => '0');
+            pulse_reg <= '0';
+        elsif rising_edge(clk) then
+            if count = CNT_MAX then
+                -- Generate a one-cycle pulse
+                pulse_reg <= '1';
+                -- Reset the counter after reaching the count
+                count <= (others => '0');
+            else
+                -- No pulse, just increment the counter
+                pulse_reg <= '0';
+                count <= count + 1;
+            end if;
+        end if;
+    end process;
     ------------------------------------------------------------------------------------------------
     -- PROCESS FOR UPDATING DISPLAY FROM INTERNAL
     ------------------------------------------------------------------------------------------------
@@ -147,7 +174,7 @@ BEGIN
            
     PROCESS(clk, reset)
     BEGIN
-        IF reset = '0' THEN
+        IF reset = '0' or pulse_o = '1' THEN
             state <= wait_power_on;
             delay_counter <= 0;
             reg_rs <= '0';
