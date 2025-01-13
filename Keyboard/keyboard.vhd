@@ -10,7 +10,12 @@ entity keyboard is
     col             : in  std_logic_vector(3 downto 0); -- Pin ja7 -> ja10
     seg             : out std_logic_vector(7 downto 0); -- Output on segment display
     AN              : out std_logic_vector(7 downto 0);--;  -- Decides which segment to output on
-    LED             : out std_logic
+    LED             : out std_logic;
+    output_h_tens   : out std_logic_vector(7 downto 0);
+    output_h_ones   : out std_logic_vector(7 downto 0);
+    output_m_tens   : out std_logic_vector(7 downto 0);
+    output_m_ones   : out std_logic_vector(7 downto 0)
+
    -- sclk            : out std_logic; -- TB
    -- row_reg_tb      : out unsigned(3 downto 0); -- TB
    -- state           : out std_logic_vector(3 downto 0); -- TB
@@ -240,22 +245,26 @@ next_state_proc : process (reset,clk)
 begin
   if rising_edge(clk) then
     if reset = '0' then
-      LED <= '0';
-      seg_h_tens <= "10111111";
-      seg_h_ones <= "10111111";
-      seg_m_tens <= "10111111";
-      seg_m_ones <= "10111111";
-      counter_ht  := 0;
-      counter_ho  := 0;
-      counter_mt  := 0;
-      counter_mo  := 0;
+      next_state <= idle;
     else
     case current_state is 
     -- STATE FOR IDLE --
     when idle =>
       --state <= "0000";
       an_lit <= '0';
-
+      LED <= '0';
+      seg_h_tens <= "10111111"; -- Resets every alarm value
+      seg_h_ones <= "10111111"; -- Resets every alarm value
+      seg_m_tens <= "10111111"; -- Resets every alarm value
+      seg_m_ones <= "10111111"; -- Resets every alarm value
+      output_h_tens <= 'Z'; -- Don't want any output until alarm is set
+      output_h_ones <= 'Z'; -- Don't want any output until alarm is set
+      output_m_tens <= 'Z'; -- Don't want any output until alarm is set
+      output_m_ones <= 'Z'; -- Don't want any output until alarm is set
+      counter_ht  := 0;
+      counter_ho  := 0;
+      counter_mt  := 0;
+      counter_mo  := 0;
         if seg_buffer = "10001000" then  -- If A is pressed
           next_state <= set_h_tens;
         end if;
@@ -286,7 +295,7 @@ begin
       -- STATE FOR SETTING HOUR SECOND DIGIT --
       when set_h_ones =>
       --state <= "0010";
-      if counter_ho = 40000000 then
+      if counter_ho = 40000000 then -- Delay to avoi unintended key press
         an_lit <= '1';
         if seg_h_tens = "10100100" then       -- If tens = 2, then only 0-4 acceptable inputs
           if seg_buffer = "11111001" then     -- If 1 is pressed (0xF9)
@@ -362,8 +371,7 @@ begin
 
       -- STATE FOR SETTING MINUTES FIRST DIGIT --
       when set_m_tens =>
-      counter_mt := 0;
-      if counter_ho = 40000000 then
+      if counter_mt = 40000000 then -- Delay to avoi unintended key press
         an_lit <= '1';
         if seg_buffer = "11111001" then     -- If 1 is pressed (0xF9)
           seg_m_tens <= "11111001";
@@ -397,7 +405,7 @@ begin
 
       -- STATE FOR SETTING MINUTES SECOND DIGIT --
       when set_m_ones =>
-      if counter_mo = 40000000 then
+      if counter_mo = 40000000 then -- Delay to avoi unintended key press
         if seg_buffer = "11111001" then     -- If 1 is pressed (0xF9)
           seg_m_ones <= "11111001";
           next_state <= buffer_state;
@@ -448,7 +456,7 @@ begin
     -- BUFFER STATE, USED TO CONFIRM OF REDO THE TIME --
     when buffer_state =>
     if counter_bs = 40000000 then
-      if seg_buffer = "10000011" then
+      if seg_buffer = "10000011" then -- Press B to confirm
         next_state <= alarm_state;
       end if;
     else
@@ -457,15 +465,16 @@ begin
 
     -- WAITING FOR ALARM --
     when alarm_state =>
+    LED <= '1';
+    output_h_tens <= seg_h_tens;
+    output_h_ones <= seg_h_ones;
+    output_m_tens <= seg_m_tens;
+    output_m_ones <= seg_m_ones;
       if counter_as = 40000000 then
-        if seg_buffer = "10001000" then
-          LED <= '0';
+        if seg_buffer = "10001000" then -- Delay to avoi unintended key press
           next_state <= set_h_ones;
-        elsif seg_buffer = "11000110" then
-          LED <= '0';
+        elsif seg_buffer = "11000110" then -- Press C to cancel alarm
           next_state <= idle;
-        else
-          LED <= '1';
         end if;
       else
         counter_as := counter_as + 1;
