@@ -10,11 +10,11 @@ entity keyboard is
     col             : in  std_logic_vector(3 downto 0); -- Pin ja7 -> ja10
     seg             : out std_logic_vector(7 downto 0); -- Output on segment display
     AN              : out std_logic_vector(7 downto 0);--;  -- Decides which segment to output on
-    LED             : out std_logic;
-    output_h_tens   : out std_logic_vector(7 downto 0);
-    output_h_ones   : out std_logic_vector(7 downto 0);
-    output_m_tens   : out std_logic_vector(7 downto 0);
-    output_m_ones   : out std_logic_vector(7 downto 0)
+    LED             : out std_logic--;
+    --keypad_h_tens   : out std_logic_vector(7 downto 0);
+    --keypad_h_ones   : out std_logic_vector(7 downto 0);
+    --keypad_m_tens   : out std_logic_vector(7 downto 0);
+    --keypad_m_ones   : out std_logic_vector(7 downto 0)
 
    -- sclk            : out std_logic; -- TB
    -- row_reg_tb      : out unsigned(3 downto 0); -- TB
@@ -65,11 +65,19 @@ architecture keyboard_arch of keyboard is
   signal seg_m_tens     : std_logic_vector(7 downto 0);
   signal seg_m_ones     : std_logic_vector(7 downto 0);
 
-  -- FLAGS
-  
-
+  --
+  signal output_h_tens  : std_logic_vector(7 downto 0);
+  signal output_h_ones  : std_logic_vector(7 downto 0);
+  signal output_m_tens  : std_logic_vector(7 downto 0);
+  signal output_m_ones  : std_logic_vector(7 downto 0);
 
 begin
+
+-- Outputs the alarm time to wrapper module
+--keypad_h_tens <= seg_h_tens;
+--keypad_h_ones <= seg_h_ones;
+--keypad_m_tens <= seg_m_tens;
+--keypad_m_ones <= seg_m_ones;
 row <= row_internal; -- Flyttade ur reg_proc
 
 -- TB --
@@ -257,10 +265,10 @@ begin
       seg_h_ones <= "10111111"; -- Resets every alarm value
       seg_m_tens <= "10111111"; -- Resets every alarm value
       seg_m_ones <= "10111111"; -- Resets every alarm value
-      output_h_tens <= 'Z'; -- Don't want any output until alarm is set
-      output_h_ones <= 'Z'; -- Don't want any output until alarm is set
-      output_m_tens <= 'Z'; -- Don't want any output until alarm is set
-      output_m_ones <= 'Z'; -- Don't want any output until alarm is set
+      output_h_tens <= "ZZZZZZZZ"; -- Don't want any output until alarm is set
+      output_h_ones <= "ZZZZZZZZ"; -- Don't want any output until alarm is set
+      output_m_tens <= "ZZZZZZZZ"; -- Don't want any output until alarm is set
+      output_m_ones <= "ZZZZZZZZ"; -- Don't want any output until alarm is set
       counter_ht  := 0;
       counter_ho  := 0;
       counter_mt  := 0;

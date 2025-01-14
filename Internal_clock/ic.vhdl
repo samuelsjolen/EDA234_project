@@ -4,10 +4,18 @@ use IEEE.NUMERIC_STD.ALL;
 
 entity ic is
     Port (
-        clk         	: in    std_logic;
-        reset       	: in    std_logic; 
-        SEG         	: out   std_logic_vector(7 downto 0);
-        AN          	: out   std_logic_vector(7 downto 0)
+        clk         	: in  std_logic;
+        reset       	: in  std_logic;
+				led_sec				: out	std_logic_vector(5 downto 0);
+				led_min				: out std_logic_vector(3 downto 0);
+				led_h	 				: out std_logic_vector(3 downto 0)	
+
+				--ic_h_tens			: out unsigned(7 downto 0);
+				--ic_h_ones			: out unsigned(7 downto 0);
+				--ic_m_tens			: out unsigned(7 downto 0);
+				--ic_m_ones			: out unsigned(7 downto 0)
+        --SEG         	: out   std_logic_vector(7 downto 0);
+        --AN          	: out   std_logic_vector(7 downto 0)
     );
 end ic;
 
@@ -25,13 +33,16 @@ signal min_ones       : unsigned(3 downto 0);
 signal min_tens       : unsigned(3 downto 0);
 signal h_ones         : unsigned(3 downto 0);
 signal h_tens         : unsigned(3 downto 0);
---signal reset_lcd_flag	: std_logic;
---signal reset_lcd_int	: std_logic;
-
-
+signal SEG   					: unsigned(7 downto 0);
+signal AN    					: unsigned(7 downto 0);
+signal bin_sec				: unsigned(5 downto 0);
+signal bin_min				: unsigned(3 downto 0);
+signal bin_h  				: unsigned(3 downto 0);
 
 begin
-
+led_sec <= std_logic_vector(bin_sec);
+led_min <= std_logic_vector(bin_min);
+led_h <= std_logic_vector(bin_h);
 
 -- Reset logic, inverted on board
 
@@ -43,7 +54,7 @@ begin
 			counter_sec <= 0;
 			sec_clk_enable <= '0';
 		else
-			if counter_sec = 100000 then--000 then  -- Adjust based on input clock frequency
+			if counter_sec = 1000000 then--0 then  -- Adjust based on input clock frequency
 				counter_sec <= 0;
 				sec_clk_enable <= '1';       -- Trigger events that depend on 1-second intervals
 			else
@@ -92,13 +103,17 @@ end process;
 MUX : process (sec_ones, sec_tens, LED_activate)
 begin
 	if LED_activate = "00" then
-		num <= min_ones; 
+		num <= min_ones;
+		--ic_m_ones <= SEG;
 	elsif LED_activate = "01" then
 		num <= min_tens;
+		--ic_m_tens <= SEG;
 	elsif LED_activate = "10" then
 		num <= h_ones; 
+		--ic_h_ones <= SEG;
 	else
 		num <= h_tens;
+		--ic_h_tens <= SEG;
 	end if; 
 end process; 
 
@@ -113,36 +128,42 @@ begin
       min_tens  <= (others => '0');
       h_ones    <= (others => '0');
       h_tens    <= (others => '0');
+			bin_sec <= (others => '0');
 		elsif sec_clk_enable = '1' then
 			sec_ones <= sec_ones + 1;
 			if sec_ones = "1001" then  -- If sec_ones reaches 9
-				sec_ones <= (others => '0');
-				sec_tens <= sec_tens + 1;
-				if sec_tens = "0101" then  -- If sec_tens reaches 5
-					sec_tens <= (others => '0');
-                    min_ones <= min_ones + 1;
-	               if min_ones = "1001" then -- If min_ones reaches 9
-                         min_ones <= (others => '0');
-                         min_tens <= min_tens + 1;
-                        if min_tens = "0101" then -- If min_tens reaches 5
-                        min_tens <= (others => '0');
-                        h_ones <= h_ones + 1;
-               if h_ones = "0011" then
-                    if h_tens = "0010" then
-                        h_ones <=  (others => '0');
-                        h_tens <=  (others => '0');
-                    end if;
-                    elsif h_ones = "1001" then
-                    h_ones <= (others => '0');
-                    h_tens <= h_tens + 1;
-                --if h_tens = "0010" then -- If h_tens reaches 2
-                  --h_tens <= (others => '0');
-                end if;
-              end if;
-            end if;
-          end if;
-         end if;
-			end if;
+					sec_ones <= (others => '0');
+					sec_tens <= sec_tens + 1;
+					bin_sec  <= bin_sec + 1;
+					if sec_tens = "0101" then  -- If sec_tens reaches 5
+							sec_tens <= (others => '0');
+							min_ones <= min_ones + 1;
+							bin_sec  <= bin_sec + 1;
+									if min_ones = "1001" then -- If min_ones reaches 9
+											bin_sec  <= (others => '0');
+											min_ones <= (others => '0');
+											min_tens <= min_tens + 1;
+											bin_min  <= bin_min + 1;
+													if min_tens = "0101" then -- If min_tens reaches 5
+															min_tens <= (others => '0');
+															h_ones <= h_ones + 1;
+															bin_min <= bin_min + 1;
+																	if h_ones = "0011" then
+																			if h_tens = "0010" then
+																					h_ones <=  (others => '0');
+																					h_tens <=  (others => '0');
+																					bin_h  <=  (others => '0');
+																			end if;
+																	elsif h_ones = "1001" then
+																			h_ones <= (others => '0');
+																			h_tens <= h_tens + 1;
+																			bin_h  <= bin_h + 1;
+																	end if;
+													end if;
+										end if;
+						end if;
+					end if;
+				end if;
 		end if;
 	--end if;
 end process;
