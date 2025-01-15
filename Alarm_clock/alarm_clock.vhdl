@@ -21,19 +21,19 @@ architecture alarm_arch of alarm_clock is
 
   ---------- COMPONENT DECLARATIONS ----------
   component ic is
-    port (clk           : in    std_logic;
-    reset         : in    std_logic; 
-    reset_lcd		  : out		std_logic; -- Reset to update the LCD every clock cycle
-    SEG           : out   std_logic_vector(7 downto 0);
-    AN            : out   std_logic_vector(7 downto 0);
+    port (clk       : in    std_logic;
+    reset           : in    std_logic; 
+    update_lcd		: out	std_logic; -- Reset to update the LCD every clock cycle
+    SEG             : out   std_logic_vector(7 downto 0);
+    AN              : out   std_logic_vector(7 downto 0);
     h_tens_lcd		: out   std_logic_vector(7 downto 0);
-    h_ones_lcd		:	out 	std_logic_vector(7 downto 0);
-    min_ones_lcd	:	out 	std_logic_vector(7 downto 0);
-    min_tens_lcd	:	out 	std_logic_vector(7 downto 0));
+    h_ones_lcd		: out 	std_logic_vector(7 downto 0);
+    min_ones_lcd	: out 	std_logic_vector(7 downto 0);
+    min_tens_lcd	: out 	std_logic_vector(7 downto 0));
   end component;
 
     component lcd_init is
-     port( clk       : in    std_logic;                      -- 100 MHz clock
+     port( clk  : in    std_logic;                      -- 100 MHz clock
       reset     : in    std_logic;                      -- Active-low reset
       lcd_rs    : out   std_logic;                      -- Register select
       lcd_rw    : out   std_logic;                      -- Read/write
@@ -46,9 +46,9 @@ architecture alarm_arch of alarm_clock is
     end component;
 
     ---------- SIGNAL DECLARATIONS ----------
-    signal reset_lcd  : std_logic;
-    signal h_tens	    : std_logic_vector(7 downto 0);	
-    signal h_ones	    : std_logic_vector(7 downto 0);	
+    signal update_lcd : std_logic;
+    signal h_tens	  : std_logic_vector(7 downto 0);	
+    signal h_ones	  : std_logic_vector(7 downto 0);	
     signal min_ones   : std_logic_vector(7 downto 0);
     signal min_tens   : std_logic_vector(7 downto 0);
 
@@ -65,11 +65,11 @@ architecture alarm_arch of alarm_clock is
     
     ic_inst : ic
       port map(
-        clk => clk,     -- Correct
-        reset => reset, -- Correct
+        clk => clk, 
+        reset => reset,
         SEG => SEG,
         AN => AN,
-        reset_lcd => reset_lcd,
+        update_lcd => update_lcd,
         h_tens_lcd => h_tens,
         h_ones_lcd => h_ones,
         min_tens_lcd => min_tens,
@@ -79,7 +79,7 @@ architecture alarm_arch of alarm_clock is
     lcd_inst : lcd_init
       port map(
         clk => clk,
-        reset => reset_lcd,
+        reset => update_lcd,
         lcd_rs => lcd_rs,
         lcd_rw => lcd_rw,
         lcd_e  => lcd_e,
@@ -91,4 +91,3 @@ architecture alarm_arch of alarm_clock is
       );
 
 end architecture;
-
