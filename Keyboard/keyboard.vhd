@@ -11,10 +11,10 @@ entity keyboard is
     seg             : out std_logic_vector(7 downto 0); -- Output on segment display
     AN              : out std_logic_vector(7 downto 0);--;  -- Decides which segment to output on
     LED             : out std_logic;
-    keypad_h_tens   : out std_logic_vector(7 downto 0);
-    keypad_h_ones   : out std_logic_vector(7 downto 0);
-    keypad_m_tens   : out std_logic_vector(7 downto 0);
-    keypad_m_ones   : out std_logic_vector(7 downto 0);
+    keypad_h_tens   : out std_logic_vector(3 downto 0);
+    keypad_h_ones   : out std_logic_vector(3 downto 0);
+    keypad_m_tens   : out std_logic_vector(3 downto 0);
+    keypad_m_ones   : out std_logic_vector(3 downto 0);
     seg_output      : out std_logic_vector(7 downto 0); -- Testbench
     state           : out std_logic_vector(3 downto 0)  -- Testbench
     );
@@ -57,6 +57,11 @@ architecture keyboard_arch of keyboard is
   signal seg_m_tens     : std_logic_vector(7 downto 0);
   signal seg_m_ones     : std_logic_vector(7 downto 0);
 
+  signal val_h_tens     : unsigned(3 downto 0);  
+  signal val_h_ones     : unsigned(3 downto 0);
+  signal val_m_tens     : unsigned(3 downto 0);
+  signal val_m_ones     : unsigned(3 downto 0);  
+
 begin
 row <= row_internal; -- Flyttade ur reg_proc
 seg_output <= seg_buffer; -- Testbench
@@ -71,7 +76,7 @@ begin
     else
         if rising_edge(clk) then
             counter := counter + 1;
-            if counter = 10 then--100 before 00 then
+            if counter = 10 then --100 before 00 then
                 slow_clk <= not slow_clk;
                 counter := 0;
             end if;
@@ -229,18 +234,18 @@ begin
       state <= "0000"; -- Testbench
       an_lit <= '0';
       LED <= '0';
-      seg_h_tens <= "10111111"; -- Resets every alarm value
-      seg_h_ones <= "10111111"; -- Resets every alarm value
-      seg_m_tens <= "10111111"; -- Resets every alarm value
-      seg_m_ones <= "10111111"; -- Resets every alarm value
-      keypad_h_tens <= "ZZZZZZZZ"; -- Don't want any output until alarm is set
-      keypad_h_ones <= "ZZZZZZZZ"; -- Don't want any output until alarm is set
-      keypad_m_tens <= "ZZZZZZZZ"; -- Don't want any output until alarm is set
-      keypad_m_ones <= "ZZZZZZZZ"; -- Don't want any output until alarm is set
-      counter_ht  := 0;
-      counter_ho  := 0;
-      counter_mt  := 0;
-      counter_mo  := 0;
+      seg_h_tens <= "10111111";     -- Resets every alarm value
+      seg_h_ones <= "10111111";     -- Resets every alarm value
+      seg_m_tens <= "10111111";     -- Resets every alarm value
+      seg_m_ones <= "10111111";     -- Resets every alarm value
+      keypad_h_tens <= "ZZZZ";      -- Don't want any output until alarm is set
+      keypad_h_ones <= "ZZZZ";      -- Don't want any output until alarm is set
+      keypad_m_tens <= "ZZZZ";      -- Don't want any output until alarm is set
+      keypad_m_ones <= "ZZZZ";      -- Don't want any output until alarm is set
+      counter_ht  := 0;             -- Enables delay to avoid unintended press
+      counter_ho  := 0;             -- Enables delay to avoid unintended press
+      counter_mt  := 0;             -- Enables delay to avoid unintended press
+      counter_mo  := 0;             -- Enables delay to avoid unintended press
         if seg_buffer = "10001000" then  -- If A is pressed
           next_state <= set_h_tens;
         end if;
@@ -253,13 +258,16 @@ begin
       state <= "0001"; -- Testbench
       an_lit <= '1';
       if seg_buffer = "11111001" then     -- If 1 is pressed (0xF9)
-        seg_h_tens <= "11111001";
+        seg_h_tens <= "11111001";         -- Graphical representation for 7-seg display
+        val_h_tens <= "0001";             -- Numerical value to compare with the time of the IC
         next_state <= set_h_ones;
       elsif seg_buffer = "10100100" then  -- If 2 is pressed (0xA4)
-        seg_h_tens <= "10100100"; 
+        seg_h_tens <= "10100100";         -- Graphical representation for 7-seg display
+        val_h_tens <= "0010";             -- Numerical value to compare with the time of the IC
         next_state <= set_h_ones;
       elsif seg_buffer = "11000000" then  -- If 0 is pressed
-        seg_h_tens <= "11000000"; 
+        seg_h_tens <= "11000000";         -- Graphical representation for 7-seg display
+        val_h_tens <= "0000";             -- Numerical value to compare with the time of the IC
         next_state <= set_h_ones;
       else
         seg_h_tens <= "10111111";
@@ -272,73 +280,65 @@ begin
       when set_h_ones =>
       state <= "0010"; -- Testbench
       if counter_ho = 15 then -- Testbench -- Delay to avoid unintended key press
-      --if counter_ho = 40000000 then -- Hardware  -- Delay to avoid unintented press
+      --if counter_ho = 40000000 then -- Hardware  -- Delay to avoid unintended press
         an_lit <= '1';
         if seg_h_tens = "10100100" then       -- If tens = 2, then only 0-4 acceptable inputs
           if seg_buffer = "11111001" then     -- If 1 is pressed (0xF9)
             seg_h_ones <= "11111001";
+            val_h_ones <= "0001";             -- Numerical value to compare with the time of the IC
             next_state <= set_m_tens;
-            --counter_ho := 0;
+            counter_ho := 0;
           elsif seg_buffer = "10100100" then  -- If 2 is pressed (0xA4)
             seg_h_ones <= "10100100"; 
+            val_h_ones <= "0010";             -- Numerical value to compare with the time of the IC
             next_state <= set_m_tens;
-            --counter_ho := 0;
-          elsif seg_buffer = "10110000" then  -- If 3 is pressed (0xA4)
+            counter_ho := 0;
+          elsif seg_buffer = "10110000" then  -- If 3 is pressed (0xB0)
             seg_h_ones <= "10110000"; 
+            val_h_ones <= "0011";             -- Numerical value to compare with the time of the IC
             next_state <= set_m_tens;
-            --counter := 0; 
-          elsif seg_buffer = "10011001" then  -- If 4 is pressed (0xA4)
+            counter_ho := 0;
+          elsif seg_buffer = "10011001" then  -- If 4 is pressed (0x99)
             seg_h_ones <= "10011001"; 
+            val_h_ones <= "0100";             -- Numerical value to compare with the time of the IC
             next_state <= set_m_tens;
-            --counter := 0;
-          elsif seg_buffer = "11000000" then  -- If 0 is pressed (0xA4)
+            counter_ho := 0;
+          elsif seg_buffer = "11000000" then  -- If 0 is pressed (0xC0)
             seg_h_ones <= "11000000"; 
+            val_h_ones <= "0000";             -- Numerical value to compare with the time of the IC
             next_state <= set_m_tens;
-            ----counter := 0;
-          else null;
-          end if;  
-        else 
+            counter_ho := 0;
+          else 
+            null;
+          end if; 
+        else
           if seg_buffer = "11111001" then     -- If 1 is pressed (0xF9)
             seg_h_ones <= "11111001";
+            val_h_ones <= "0001";             -- Numerical value to compare with the time of the IC
             next_state <= set_m_tens;
-            --counter := 0;
+            counter_ho := 0;
           elsif seg_buffer = "10100100" then  -- If 2 is pressed (0xA4)
             seg_h_ones <= "10100100"; 
+            val_h_ones <= "0010";             -- Numerical value to compare with the time of the IC
             next_state <= set_m_tens;
-            --counter := 0;
-          elsif seg_buffer = "10110000" then  -- If 3 is pressed (0xA4)
+            counter_ho := 0;
+          elsif seg_buffer = "10110000" then  -- If 3 is pressed (0xB0)
             seg_h_ones <= "10110000"; 
+            val_h_ones <= "0011";             -- Numerical value to compare with the time of the IC
             next_state <= set_m_tens;
-            --counter := 0; 
-          elsif seg_buffer = "10011001" then  -- If 4 is pressed (0xA4)
+            counter_ho := 0;
+          elsif seg_buffer = "10011001" then  -- If 4 is pressed (0x99)
             seg_h_ones <= "10011001"; 
+            val_h_ones <= "0100";             -- Numerical value to compare with the time of the IC
             next_state <= set_m_tens;
-            --counter := 0;
-          elsif seg_buffer = "10010010" then  -- If 5 is pressed (0xA4)
-            seg_h_ones <= "10010010"; 
-            next_state <= set_m_tens;
-            --counter := 0;
-          elsif seg_buffer = "10000010" then  -- If 6 is pressed (0xA4)
-            seg_h_ones <= "10000010"; 
-            next_state <= set_m_tens;
-            --counter := 0;
-          elsif seg_buffer = "11111000" then  -- If 7 is pressed (0xA4)
-            seg_h_ones <= "11111000"; 
-            next_state <= set_m_tens;
-            --counter := 0;
-          elsif seg_buffer = "10000000" then  -- If 8 is pressed (0xA4)
-            seg_h_ones <= "10000000"; 
-            next_state <= set_m_tens;
-            --counter := 0;
-          elsif seg_buffer = "10010000" then  -- If 9 is pressed (0xA4)
-            seg_h_ones <= "10010000"; 
-            next_state <= set_m_tens;
-            --counter := 0;
-          elsif seg_buffer = "11000000" then  -- If 0 is pressed (0xA4)
+            counter_ho := 0;
+          elsif seg_buffer = "11000000" then  -- If 0 is pressed (0xC0)
             seg_h_ones <= "11000000"; 
+            val_h_ones <= "0000";             -- Numerical value to compare with the time of the IC
             next_state <= set_m_tens;
-            --counter := 0;
-          else null;
+            counter_ho := 0;
+          else 
+            null;
           end if;  
         end if;
       else 
@@ -354,28 +354,28 @@ begin
         an_lit <= '1';
         if seg_buffer = "11111001" then     -- If 1 is pressed (0xF9)
           seg_m_tens <= "11111001";
+          val_m_tens <= "0001";
           next_state <= set_m_ones;
-          --counter := 0;
         elsif seg_buffer = "10100100" then  -- If 2 is pressed (0xA4)
           seg_m_tens <= "10100100"; 
+          val_m_tens <= "0010";
           next_state <= set_m_ones;
-          --counter := 0;
         elsif seg_buffer = "10110000" then  -- If 3 is pressed (0xA4)
           seg_m_tens <= "10110000"; 
+          val_m_tens <= "0011";
           next_state <= set_m_ones;
-          --counter := 0; 
         elsif seg_buffer = "10011001" then  -- If 4 is pressed (0xA4)
           seg_m_tens <= "10011001"; 
+          val_m_tens <= "0100";
           next_state <= set_m_ones;
-          --counter := 0;
         elsif seg_buffer = "10010010" then  -- If 5 is pressed (0xA4)
           seg_m_tens <= "10010010"; 
+          val_m_tens <= "0101";
           next_state <= set_m_ones;
-          --counter := 0;
         elsif seg_buffer = "11000000" then  -- If 0 is pressed (0xA4)
           seg_m_tens <= "11000000"; 
+          val_m_tens <= "0000";
           next_state <= set_m_ones;
-          --counter := 0;
         else null;
         end if;  
       else 
@@ -389,44 +389,42 @@ begin
       --if counter_mo = 40000000 then -- Hardware
         if seg_buffer = "11111001" then     -- If 1 is pressed (0xF9)
           seg_m_ones <= "11111001";
+          val_m_ones <= "0001";
           next_state <= buffer_state;
-          --counter := 0;
         elsif seg_buffer = "10100100" then  -- If 2 is pressed (0xA4)
           seg_m_ones <= "10100100"; 
+          val_m_ones <= "0010";
           next_state <= buffer_state;
-          --counter := 0;
         elsif seg_buffer = "10110000" then  -- If 3 is pressed (0xA4)
           seg_m_ones <= "10110000"; 
+          val_m_ones <= "0011";
           next_state <= buffer_state;
-          --counter := 0; 
         elsif seg_buffer = "10011001" then  -- If 4 is pressed (0xA4)
           seg_m_ones <= "10011001"; 
+          val_m_ones <= "0100";
           next_state <= buffer_state;
-          --counter := 0;
         elsif seg_buffer = "10010010" then  -- If 5 is pressed (0xA4)
           seg_m_ones <= "10010010"; 
+          val_m_ones <= "0101";
           next_state <= buffer_state;
-          --counter := 0;
         elsif seg_buffer = "10000010" then  -- If 6 is pressed (0xA4)
           seg_m_ones <= "10000010"; 
+          val_m_ones <= "0110";
           next_state <= buffer_state;
-          --counter := 0;
         elsif seg_buffer = "11111000" then  -- If 7 is pressed (0xA4)
           seg_m_ones <= "11111000"; 
+          val_m_ones <= "0111";
           next_state <= buffer_state;
-          --counter := 0;
         elsif seg_buffer = "10000000" then  -- If 8 is pressed (0xA4)
           seg_m_ones <= "10000000"; 
+          val_m_ones <= "1000";
           next_state <= buffer_state;
-          --counter := 0;
         elsif seg_buffer = "10010000" then  -- If 9 is pressed (0xA4)
           seg_m_ones <= "10010000"; 
           next_state <= buffer_state;
-          --counter := 0;
         elsif seg_buffer = "11000000" then  -- If 0 is pressed (0xA4)
           seg_m_ones <= "11000000"; 
           next_state <= buffer_state;
-          --counter := 0;
         else 
           null;
         end if;  
@@ -449,10 +447,10 @@ begin
     when alarm_state =>
     state <= "0110";
     LED <= '1';
-      keypad_h_tens <= seg_h_tens;
-      keypad_h_ones <= seg_h_ones;
-      keypad_m_tens <= seg_m_tens;
-      keypad_m_ones <= seg_m_ones;
+      keypad_h_tens <= std_logic_vector(val_h_tens);
+      keypad_h_ones <= std_logic_vector(val_h_ones);
+      keypad_m_tens <= std_logic_vector(val_m_tens);
+      keypad_m_ones <= std_logic_vector(val_m_ones);
       if counter_as = 4 then -- 40000000
         if seg_buffer = "10001000" then -- Delay to avoid unintended key press
           next_state <= set_h_ones;

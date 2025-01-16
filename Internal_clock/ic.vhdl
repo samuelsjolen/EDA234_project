@@ -9,10 +9,10 @@ entity ic is
 				led_sec				: out	std_logic_vector(5 downto 0);
 				led_min				: out std_logic_vector(3 downto 0);
 				led_h	 				: out std_logic_vector(3 downto 0);	
-				ic_h_tens			: out std_logic_vector(7 downto 0):= (Others => '0');
-				ic_h_ones			: out std_logic_vector(7 downto 0):= (Others => '0');
-				ic_m_tens			: out std_logic_vector(7 downto 0):= (Others => '0');
-				ic_m_ones			: out std_logic_vector(7 downto 0):= (Others => '0')
+				ic_h_tens			: out std_logic_vector(3 downto 0);--:= (Others => '0');
+				ic_h_ones			: out std_logic_vector(3 downto 0);--:= (Others => '0');
+				ic_m_tens			: out std_logic_vector(3 downto 0);--:= (Others => '0');
+				ic_m_ones			: out std_logic_vector(3 downto 0)--:= (Others => '0')
 				--num_ctrl			: out std_logic_vector(3 downto 0)
     );
 end ic;
@@ -37,10 +37,23 @@ signal bin_sec				: unsigned(5 downto 0);
 signal bin_min				: unsigned(3 downto 0);
 signal bin_h  				: unsigned(3 downto 0);
 
+signal val_h_tens			: unsigned(3 downto 0):= (Others => '0');
+signal val_h_ones			: unsigned(3 downto 0):= (Others => '0');
+signal val_m_tens			: unsigned(3 downto 0):= (Others => '0');
+signal val_m_ones			: unsigned(3 downto 0):= (Others => '0');
+
 begin
-led_sec <= std_logic_vector(bin_sec); -- TB
-led_min <= std_logic_vector(bin_min); -- TB
-led_h 	<= std_logic_vector(bin_h);		-- TB
+led_sec <= std_logic_vector(bin_sec); 		-- Used to display clock on FPGA LEDs
+led_min <= std_logic_vector(bin_min); 		-- Used to display clock on FPGA LEDs
+led_h 	<= std_logic_vector(bin_h);				-- Used to display clock on FPGA LEDs
+
+ic_h_tens	<= std_logic_vector(h_tens); 		-- Used to trigger the alarm
+ic_h_ones	<= std_logic_vector(h_ones); 		-- Used to trigger the alarm
+ic_m_tens	<= std_logic_vector(min_tens); 	-- Used to trigger the alarm
+ic_m_ones	<= std_logic_vector(min_ones); 	-- Used to trigger the alarm
+
+
+
 --num_ctrl <= std_logic_vector(num);  -- TB 2
 
 -- Reset logic, inverted on board
@@ -105,16 +118,16 @@ MUX : process (sec_ones, sec_tens, LED_activate)
 begin
 	if LED_activate = "00" then
 		num <= min_ones;
-		ic_m_ones <= std_logic_vector(SEG);
+		--ic_m_ones <= std_logic_vector(SEG);
 	elsif LED_activate = "01" then
 		num <= min_tens;
-		ic_m_tens <= std_logic_vector(SEG);
+		--ic_m_tens <= std_logic_vector(SEG);
 	elsif LED_activate = "10" then
 		num <= h_ones; 
-		ic_h_ones <= "11111111";--std_logic_vector(SEG);
+		--ic_h_ones <= std_logic_vector(SEG);
 	else
 		num <= h_tens;
-		ic_h_tens <= std_logic_vector(SEG);
+		--ic_h_tens <= std_logic_vector(SEG);
 	end if; 
 end process; 
 
@@ -123,34 +136,38 @@ clock_counters : process (clk, reset)
 begin
 	if rising_edge(clk) then
 		if reset = '0' then
-			sec_ones  <= (others => '0');
-			sec_tens  <= (others => '0');
-      min_ones  <= (others => '0');
-      min_tens  <= (others => '0');
-      h_ones    <= (others => '0');
-      h_tens    <= (others => '0');
-			bin_sec 	<= (others => '0');
-			bin_min		<= (others => '0');
-			bin_h			<= (others => '0');
+			sec_ones  <= (others => '0'); -- Keeps track of time
+			sec_tens  <= (others => '0'); -- Keeps track of time
+      min_ones  <= (others => '0'); -- Keeps track of time
+      min_tens  <= (others => '0'); -- Keeps track of time
+      h_ones    <= (others => '0'); -- Keeps track of time
+      h_tens    <= (others => '0'); -- Keeps track of time
+
+			bin_sec 	<= (others => '0');	-- Used to display clock on FPGA LEDs
+			bin_min		<= (others => '0');	-- Used to display clock on FPGA LEDs
+			bin_h			<= (others => '0');	-- Used to display clock on FPGA LEDs
 		elsif sec_clk_enable = '1' then
 			sec_ones <= sec_ones + 1;
+			bin_sec  <= bin_sec + 1;
 			if sec_ones = "1001" then  -- If sec_ones reaches 9
 					sec_ones <= (others => '0');
 					sec_tens <= sec_tens + 1;
 					bin_sec  <= bin_sec + 1;
 					if sec_tens = "0101" then  -- If sec_tens reaches 5
 							sec_tens <= (others => '0');
+							bin_sec  <= (others => '0');
 							min_ones <= min_ones + 1;
-							bin_sec  <= bin_sec + 1;
+							bin_min  <= bin_min + 1;
 									if min_ones = "1001" then -- If min_ones reaches 9
-											bin_sec  <= (others => '0');
 											min_ones <= (others => '0');
 											min_tens <= min_tens + 1;
 											bin_min  <= bin_min + 1;
 													if min_tens = "0101" then -- If min_tens reaches 5
 															min_tens <= (others => '0');
+															val_m_ones <= (others => '0');
 															h_ones <= h_ones + 1;
-															bin_min <= bin_min + 1;
+															bin_h  <= bin_h + 1;
+															val_h_tens <= val_h_tens + 1;
 																	if h_ones = "0011" then
 																			if h_tens = "0010" then
 																					h_ones <=  (others => '0');
@@ -198,22 +215,4 @@ begin
 			SEG <= "11111101"; -- Default (error state)
 	end case;
 end process;
-
-
--- ASCII Codes Table for Clock Display
--- | ASCII Code (Binary) | Comment                  |
--- |---------------------|--------------------------|
--- | `0011 0000`         | Digit 0                  |
--- | `0011 0001`         | Digit 1                  |
--- | `0011 0010`         | Digit 2                  |
--- | `0011 0011`         | Digit 3                  |
--- | `0011 0100`         | Digit 4                  |
--- | `0011 0101`         | Digit 5                  |
--- | `0011 0110`         | Digit 6                  |
--- | `0011 0111`         | Digit 7                  |
--- | `0011 1000`         | Digit 8                  |
--- | `0011 1001`         | Digit 9                  |
--- | `0011 1010`         | Colon                    |
--- | `0010 0000`         | Space (used for padding) | 
-
 end architecture;

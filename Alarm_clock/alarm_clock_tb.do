@@ -12,12 +12,10 @@ add wave row_tb
 add wave col_tb
 
 add wave -divider Display
-add wave -radix hexadecimal AN_tb
-add wave seg_tb
 add wave seg_output_tb
 
 add wave -divider "Trigger Signals"
-add wave -radix binary -color green keypad_ctrl_tb
+add wave -radix binary keypad_ctrl_tb
 add wave -radix binary -color green ic_ctrl_tb
 
 add wave -divider "LED Clock"
