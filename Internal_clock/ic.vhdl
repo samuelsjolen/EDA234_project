@@ -8,14 +8,12 @@ entity ic is
         reset       	: in  std_logic;
 				led_sec				: out	std_logic_vector(5 downto 0);
 				led_min				: out std_logic_vector(3 downto 0);
-				led_h	 				: out std_logic_vector(3 downto 0)	
-
-				--ic_h_tens			: out unsigned(7 downto 0);
-				--ic_h_ones			: out unsigned(7 downto 0);
-				--ic_m_tens			: out unsigned(7 downto 0);
-				--ic_m_ones			: out unsigned(7 downto 0)
-        --SEG         	: out   std_logic_vector(7 downto 0);
-        --AN          	: out   std_logic_vector(7 downto 0)
+				led_h	 				: out std_logic_vector(3 downto 0);	
+				ic_h_tens			: out std_logic_vector(7 downto 0):= (Others => '0');
+				ic_h_ones			: out std_logic_vector(7 downto 0):= (Others => '0');
+				ic_m_tens			: out std_logic_vector(7 downto 0):= (Others => '0');
+				ic_m_ones			: out std_logic_vector(7 downto 0):= (Others => '0')
+				--num_ctrl			: out std_logic_vector(3 downto 0)
     );
 end ic;
 
@@ -40,9 +38,10 @@ signal bin_min				: unsigned(3 downto 0);
 signal bin_h  				: unsigned(3 downto 0);
 
 begin
-led_sec <= std_logic_vector(bin_sec);
-led_min <= std_logic_vector(bin_min);
-led_h <= std_logic_vector(bin_h);
+led_sec <= std_logic_vector(bin_sec); -- TB
+led_min <= std_logic_vector(bin_min); -- TB
+led_h 	<= std_logic_vector(bin_h);		-- TB
+--num_ctrl <= std_logic_vector(num);  -- TB 2
 
 -- Reset logic, inverted on board
 
@@ -54,7 +53,8 @@ begin
 			counter_sec <= 0;
 			sec_clk_enable <= '0';
 		else
-			if counter_sec = 1000000 then--0 then  -- Adjust based on input clock frequency
+			if counter_sec = 1 then -- Testbench
+			--if counter_sec = 10000000 then -- Hardware
 				counter_sec <= 0;
 				sec_clk_enable <= '1';       -- Trigger events that depend on 1-second intervals
 			else
@@ -77,7 +77,8 @@ begin
 	end if;
 end process;
 
-LED_activate <= refresh(12) & refresh(13);  -- Change this division if display flickers
+LED_activate <= refresh(1) & refresh(2);  -- Testbench
+-- LED_activate <= refresh(12) & refresh(13); -- Hardware
 
 -- Process to switch between AN1 and AN0
 an_proc : process (clk, reset, LED_activate)
@@ -104,16 +105,16 @@ MUX : process (sec_ones, sec_tens, LED_activate)
 begin
 	if LED_activate = "00" then
 		num <= min_ones;
-		--ic_m_ones <= SEG;
+		ic_m_ones <= std_logic_vector(SEG);
 	elsif LED_activate = "01" then
 		num <= min_tens;
-		--ic_m_tens <= SEG;
+		ic_m_tens <= std_logic_vector(SEG);
 	elsif LED_activate = "10" then
 		num <= h_ones; 
-		--ic_h_ones <= SEG;
+		ic_h_ones <= "11111111";--std_logic_vector(SEG);
 	else
 		num <= h_tens;
-		--ic_h_tens <= SEG;
+		ic_h_tens <= std_logic_vector(SEG);
 	end if; 
 end process; 
 
@@ -128,7 +129,9 @@ begin
       min_tens  <= (others => '0');
       h_ones    <= (others => '0');
       h_tens    <= (others => '0');
-			bin_sec <= (others => '0');
+			bin_sec 	<= (others => '0');
+			bin_min		<= (others => '0');
+			bin_h			<= (others => '0');
 		elsif sec_clk_enable = '1' then
 			sec_ones <= sec_ones + 1;
 			if sec_ones = "1001" then  -- If sec_ones reaches 9

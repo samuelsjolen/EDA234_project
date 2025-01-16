@@ -6,26 +6,18 @@ entity keyboard is
   port (
     clk             : in  std_logic;
     reset           : in  std_logic;
-    row             : out std_logic_vector(3 downto 0); -- Pin ja1 -> ja4
     col             : in  std_logic_vector(3 downto 0); -- Pin ja7 -> ja10
+    row             : out std_logic_vector(3 downto 0); -- Pin ja1 -> ja4
     seg             : out std_logic_vector(7 downto 0); -- Output on segment display
     AN              : out std_logic_vector(7 downto 0);--;  -- Decides which segment to output on
-    LED             : out std_logic--;
-    --keypad_h_tens   : out std_logic_vector(7 downto 0);
-    --keypad_h_ones   : out std_logic_vector(7 downto 0);
-    --keypad_m_tens   : out std_logic_vector(7 downto 0);
-    --keypad_m_ones   : out std_logic_vector(7 downto 0)
-
-   -- sclk            : out std_logic; -- TB
-   -- row_reg_tb      : out unsigned(3 downto 0); -- TB
-   -- state           : out std_logic_vector(3 downto 0); -- TB
-   -- if_active       : out std_logic; -- TB
-   -- an_lit_tb       : out std_logic; -- TB
-   -- seg_h_tens_tb   : out std_logic_vector(7 downto 0); -- TB 
-   -- seg_h_ones_tb   : out std_logic_vector(7 downto 0); -- TB
-   -- seg_m_tens_tb   : out std_logic_vector(7 downto 0); -- TB
-   -- seg_m_ones_tb   : out std_logic_vector(7 downto 0)  -- TB
-  );
+    LED             : out std_logic;
+    keypad_h_tens   : out std_logic_vector(7 downto 0);
+    keypad_h_ones   : out std_logic_vector(7 downto 0);
+    keypad_m_tens   : out std_logic_vector(7 downto 0);
+    keypad_m_ones   : out std_logic_vector(7 downto 0);
+    seg_output      : out std_logic_vector(7 downto 0); -- Testbench
+    state           : out std_logic_vector(3 downto 0)  -- Testbench
+    );
 end entity;
 
 architecture keyboard_arch of keyboard is
@@ -65,31 +57,9 @@ architecture keyboard_arch of keyboard is
   signal seg_m_tens     : std_logic_vector(7 downto 0);
   signal seg_m_ones     : std_logic_vector(7 downto 0);
 
-  --
-  signal output_h_tens  : std_logic_vector(7 downto 0);
-  signal output_h_ones  : std_logic_vector(7 downto 0);
-  signal output_m_tens  : std_logic_vector(7 downto 0);
-  signal output_m_ones  : std_logic_vector(7 downto 0);
-
 begin
-
--- Outputs the alarm time to wrapper module
---keypad_h_tens <= seg_h_tens;
---keypad_h_ones <= seg_h_ones;
---keypad_m_tens <= seg_m_tens;
---keypad_m_ones <= seg_m_ones;
 row <= row_internal; -- Flyttade ur reg_proc
-
--- TB --
---sclk <= slow_clk;             -- TB
---row_reg_tb <= row_reg;        -- TB 
---an_lit_tb <= an_lit;          -- TB
---
---seg_h_tens_tb <= seg_h_tens;  -- TB
---seg_h_ones_tb <= seg_h_ones;  -- TB
---seg_m_tens_tb <= seg_m_tens;  -- TB
---seg_m_ones_tb <= seg_m_ones;  -- TB
-
+seg_output <= seg_buffer; -- Testbench
 
   -- Process used to generate a slow clock
 process (clk)
@@ -101,7 +71,7 @@ begin
     else
         if rising_edge(clk) then
             counter := counter + 1;
-            if counter = 100 then--00 then
+            if counter = 10 then--100 before 00 then
                 slow_clk <= not slow_clk;
                 counter := 0;
             end if;
@@ -121,7 +91,8 @@ begin
 	end if;
 end process;
 
-LED_activate <= refresh(12) & refresh(13); 
+LED_activate <= refresh(2) & refresh(3);  -- Testbench
+--LED_activate <= refresh(12) & refresh(13); -- Hardware
 
 
  -- Handles seg output
@@ -247,9 +218,6 @@ next_state_proc : process (reset,clk)
   variable counter_mo : integer := 0;
   variable counter_bs : integer := 0;
   variable counter_as : integer := 0;
-
-
-
 begin
   if rising_edge(clk) then
     if reset = '0' then
@@ -258,17 +226,17 @@ begin
     case current_state is 
     -- STATE FOR IDLE --
     when idle =>
-      --state <= "0000";
+      state <= "0000"; -- Testbench
       an_lit <= '0';
       LED <= '0';
       seg_h_tens <= "10111111"; -- Resets every alarm value
       seg_h_ones <= "10111111"; -- Resets every alarm value
       seg_m_tens <= "10111111"; -- Resets every alarm value
       seg_m_ones <= "10111111"; -- Resets every alarm value
-      output_h_tens <= "ZZZZZZZZ"; -- Don't want any output until alarm is set
-      output_h_ones <= "ZZZZZZZZ"; -- Don't want any output until alarm is set
-      output_m_tens <= "ZZZZZZZZ"; -- Don't want any output until alarm is set
-      output_m_ones <= "ZZZZZZZZ"; -- Don't want any output until alarm is set
+      keypad_h_tens <= "ZZZZZZZZ"; -- Don't want any output until alarm is set
+      keypad_h_ones <= "ZZZZZZZZ"; -- Don't want any output until alarm is set
+      keypad_m_tens <= "ZZZZZZZZ"; -- Don't want any output until alarm is set
+      keypad_m_ones <= "ZZZZZZZZ"; -- Don't want any output until alarm is set
       counter_ht  := 0;
       counter_ho  := 0;
       counter_mt  := 0;
@@ -282,7 +250,7 @@ begin
 
       -- STATE FOR SETTING HOUR FIRST DIGIT --
     when set_h_tens =>
-      --state <= "0001";
+      state <= "0001"; -- Testbench
       an_lit <= '1';
       if seg_buffer = "11111001" then     -- If 1 is pressed (0xF9)
         seg_h_tens <= "11111001";
@@ -302,8 +270,9 @@ begin
 
       -- STATE FOR SETTING HOUR SECOND DIGIT --
       when set_h_ones =>
-      --state <= "0010";
-      if counter_ho = 40000000 then -- Delay to avoi unintended key press
+      state <= "0010"; -- Testbench
+      if counter_ho = 15 then -- Testbench -- Delay to avoid unintended key press
+      --if counter_ho = 40000000 then -- Hardware  -- Delay to avoid unintented press
         an_lit <= '1';
         if seg_h_tens = "10100100" then       -- If tens = 2, then only 0-4 acceptable inputs
           if seg_buffer = "11111001" then     -- If 1 is pressed (0xF9)
@@ -379,7 +348,9 @@ begin
 
       -- STATE FOR SETTING MINUTES FIRST DIGIT --
       when set_m_tens =>
-      if counter_mt = 40000000 then -- Delay to avoi unintended key press
+      state <= "0011"; -- Testbench
+      if counter_mt = 15 then -- Testbench -- Delay to avoid unintented press
+      --if counter_mt = 40000000 then -- Hardware  -- Delay to avoid unintented press
         an_lit <= '1';
         if seg_buffer = "11111001" then     -- If 1 is pressed (0xF9)
           seg_m_tens <= "11111001";
@@ -413,7 +384,9 @@ begin
 
       -- STATE FOR SETTING MINUTES SECOND DIGIT --
       when set_m_ones =>
-      if counter_mo = 40000000 then -- Delay to avoi unintended key press
+      state <= "0100";  -- Testbench
+      if counter_mo = 15 then -- Delay to avoid unintended key press 40000000
+      --if counter_mo = 40000000 then -- Hardware
         if seg_buffer = "11111001" then     -- If 1 is pressed (0xF9)
           seg_m_ones <= "11111001";
           next_state <= buffer_state;
@@ -463,7 +436,8 @@ begin
 
     -- BUFFER STATE, USED TO CONFIRM OF REDO THE TIME --
     when buffer_state =>
-    if counter_bs = 40000000 then
+    state <= "0101";
+    if counter_bs = 15 then -- 40000000
       if seg_buffer = "10000011" then -- Press B to confirm
         next_state <= alarm_state;
       end if;
@@ -473,13 +447,14 @@ begin
 
     -- WAITING FOR ALARM --
     when alarm_state =>
+    state <= "0110";
     LED <= '1';
-    output_h_tens <= seg_h_tens;
-    output_h_ones <= seg_h_ones;
-    output_m_tens <= seg_m_tens;
-    output_m_ones <= seg_m_ones;
-      if counter_as = 40000000 then
-        if seg_buffer = "10001000" then -- Delay to avoi unintended key press
+      keypad_h_tens <= seg_h_tens;
+      keypad_h_ones <= seg_h_ones;
+      keypad_m_tens <= seg_m_tens;
+      keypad_m_ones <= seg_m_ones;
+      if counter_as = 4 then -- 40000000
+        if seg_buffer = "10001000" then -- Delay to avoid unintended key press
           next_state <= set_h_ones;
         elsif seg_buffer = "11000110" then -- Press C to cancel alarm
           next_state <= idle;
