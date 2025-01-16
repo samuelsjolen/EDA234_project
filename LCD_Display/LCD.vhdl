@@ -4,28 +4,29 @@ USE IEEE.NUMERIC_STD.ALL;
 
 ENTITY lcd_init IS
     PORT (
-        clk        : IN  std_logic;                 -- 100 MHz clock
-        reset      : IN  std_logic;                 -- Active-low reset
-        lcd_rs     : OUT std_logic;                 -- Register select
-        lcd_rw     : OUT std_logic;                 -- Read/write
-        lcd_e      : OUT std_logic;                 -- Enable
-        lcd_db     : INOUT std_logic_vector(7 DOWNTO 0);  -- Data bus
-        HOUR_ONE   : IN  STD_LOGIC_VECTOR(7 DOWNTO 0);
-        HOUR_TENS  : IN  STD_LOGIC_VECTOR(7 DOWNTO 0);
-        MIN_ONE    : IN  STD_LOGIC_VECTOR(7 DOWNTO 0);
-        MIN_TENS   : IN  STD_LOGIC_VECTOR(7 DOWNTO 0)
+        clk     : IN  std_logic;                 -- 100 MHz clock
+        reset   : IN  std_logic;                 -- Active-low reset
+        lcd_rs  : OUT std_logic;                 -- Register select
+        lcd_rw  : OUT std_logic;                 -- Read/write
+        lcd_e   : OUT std_logic;                 -- Enable
+        lcd_db  : INOUT std_logic_vector(7 DOWNTO 0);  -- Data bus
+        HOUR_ONE    : IN    STD_LOGIC_VECTOR (7 DOWNTO 0);
+        HOUR_TENS   : IN    STD_LOGIC_VECTOR (7 DOWNTO 0);
+        MIN_ONE : IN  STD_LOGIC_VECTOR(7 DOWNTO 0);
+        MIN_TENS : IN STD_LOGIC_VECTOR ( 7 DOWNTO 0)
     );
 END ENTITY;
 
 ARCHITECTURE behavior OF lcd_init IS
+
     ----------------------------------------------------------------------------
     -- Timing constants
     ----------------------------------------------------------------------------
-    CONSTANT POWER_ON_DELAY : integer := 2_000_000;  -- ~20 ms
+    CONSTANT POWER_ON_DELAY : integer := 2_0000_000;  -- ~20 ms
     CONSTANT WAIT_4_1_MS    : integer := 500_000;    -- ~5 ms
     CONSTANT WAIT_100_US    : integer := 20_000;     -- ~200 µs
-    CONSTANT ENABLE_PULSE   : integer := 1_000;      -- ~10 µs E high
-    CONSTANT BUSY_RECHECK   : integer := 20_000;     -- ~200 µs between BF checks
+    CONSTANT ENABLE_PULSE   : integer := 1_00000;      -- ~10 µs E high
+    CONSTANT BUSY_RECHECK   : integer := 20_0000;     -- ~200 µs between BF checks
 
     ----------------------------------------------------------------------------
     -- Commands
@@ -36,45 +37,71 @@ ARCHITECTURE behavior OF lcd_init IS
     CONSTANT CMD_CLEAR          : std_logic_vector(7 DOWNTO 0) := "00000001"; -- 0x01
     CONSTANT CMD_ENTRY_MODE     : std_logic_vector(7 DOWNTO 0) := "00000110"; -- 0x06
     CONSTANT CMD_DISPLAY_ON     : std_logic_vector(7 DOWNTO 0) := "00001100"; -- 0x0C
-
+   
     ----------------------------------------------------------------------------
-    -- Characters for "HH:MM"
+    --SIGNALS FOR LCD
+    ----------------------------------------------------------------------------
+   SIGNAL HOUR_TEN   :   std_logic_vector (7 DOWNTO 0);
+   SIGNAL HOUR_DIGIT :   std_logic_vector (7 DOWNTO 0);
+   SIGNAL COLON      :   std_logic_vector (7 DOWNTO 0);
+   SIGNAL MIN_TEN    :   std_logic_vector (7 DOWNTO 0);
+   SIGNAL MIN_DIGIT  :   std_logic_vector (7 DOWNTO 0);
+       
+   
+    ----------------------------------------------------------------------------
+    -- Characters for "11:45"
     ----------------------------------------------------------------------------
     TYPE msg_array_type IS ARRAY(0 TO 4) OF std_logic_vector(7 DOWNTO 0);
 
     SIGNAL MSG : msg_array_type := (
-        (OTHERS => (OTHERS => '0'))
+    (OTHERS => (OTHERS => '0'))
     );
 
     ----------------------------------------------------------------------------
-    -- Counter for periodic updates (1 minute)
+    -- Final Initialization Commands
     ----------------------------------------------------------------------------
-    --CONSTANT CNT_MAX : integer := 6000_000_000;  -- Adjust for 1 minute @ 100 MHz
-    CONSTANT CNT_MAX : unsigned(35 downto 0) := "000101100101101000001011110000000000";
-    --SIGNAL counter   : integer := 0;
-    SIGNAL counter   : unsigned(35 downto 0) := "000000000000000000000000000000000000";
-    SIGNAL pulse_o   : std_logic := '0';
+    TYPE cmd_array_type IS ARRAY(0 TO 4) OF std_logic_vector(7 DOWNTO 0);
+    CONSTANT FINAL_CMDS : cmd_array_type := (
+        CMD_FUNC_SET_FINAL,
+        CMD_DISPLAY_OFF,
+        CMD_CLEAR,
+        CMD_ENTRY_MODE,
+        CMD_DISPLAY_ON
+    );
 
     ----------------------------------------------------------------------------
     -- State Machine States
     ----------------------------------------------------------------------------
     TYPE state_type IS (
+        -- Initial steps (no BF checking, will rely on delays)
         wait_power_on,
         send_first_30, wait_first_30,
         send_second_30, wait_second_30,
-        send_third_30, wait_third_30_done,
+        send_third_30,
+        wait_third_30_done,
+
+        -- BF check for final init commands
         check_busy_start, check_busy_pulse_high, check_busy_pulse_wait, check_busy_pulse_low, check_busy_eval,
         send_cmd_enable_high, send_cmd_enable_low,
+
+        -- After final init commands done
         check_done,
+
+        -- States to write multiple characters
         write_data_check_busy,
-        write_data_pulse_high, write_data_pulse_wait, write_data_pulse_low,
+        write_data_pulse_high,
+        write_data_pulse_wait,
+        write_data_pulse_low,
+        send_data_enable,
         increment_char_index,
-        wait_for_update,
+        done_writing,
+
         finished
     );
-    
-   
 
+    ----------------------------------------------------------------------------
+    -- Signals
+    ----------------------------------------------------------------------------
     SIGNAL state         : state_type := wait_power_on;
     SIGNAL delay_counter : integer := 0;
     SIGNAL busy_flag     : std_logic := '1';
@@ -83,61 +110,57 @@ ARCHITECTURE behavior OF lcd_init IS
     SIGNAL reg_rw : std_logic := '0';
     SIGNAL reg_e  : std_logic := '0';
     SIGNAL reg_db : std_logic_vector(7 DOWNTO 0) := (OTHERS => '0');
+     signal counter_5s :integer := 0;
+     signal delay_5s: std_logic;
+    SIGNAL cmd_data_value : std_logic_vector(7 DOWNTO 0) := (OTHERS => '0');
+    SIGNAL cmd_index      : integer := 0;
 
-    SIGNAL update_flag : std_logic := '0';
-    SIGNAL msg_index   : integer := 0;
+    -- Index for writing the message "11:45"
+    SIGNAL msg_index : integer := 0;
 
 BEGIN
     lcd_rs <= reg_rs;
     lcd_rw <= reg_rw;
     lcd_e  <= reg_e;
-    lcd_db <= reg_db WHEN reg_rw = '0' ELSE (OTHERS => 'Z'); -- Tri-state condition
+    lcd_db <= reg_db WHEN reg_rw='0' ELSE (OTHERS => 'Z'); --tri-state condition
+   
+    --HOUR_TEN <= "00110001";
+  --  HOUR_DIGIT <="00110011";
+    COLON <= "00111010";
+   --MIN_TEN <= "00110100";
+   -- MIN_DIGIT <= "00110101";
+   
+    HOUR_TEN <= HOUR_TENS;
+    HOUR_DIGIT <= HOUR_ONE;
+    MIN_TEN <= MIN_TENS;
+    MIN_DIGIT <= MIN_ONE;
 
-    ----------------------------------------------------------------------------
-    -- Counter for Periodic Updates
-    ----------------------------------------------------------------------------
-    PROCESS(clk, reset)
+    ------------------------------------------------------------------------------------------------
+    -- PROCESS FOR UPDATING DISPLAY FROM INTERNAL
+    ------------------------------------------------------------------------------------------------
+    process(clk)
+    begin
+        if reset = '0' then
+        counter_5s <= 0;
+        delay_5s <= '0';
+        elsif rising_edge(clk) then
+            if counter_5s = 500000000 then
+                delay_5s <= '1';
+            else
+                counter_5s <= counter_5s +1;
+                delay_5s <= '0';
+             end if;
+         end if;
+    end process;
+    PROCESS(HOUR_TEN, HOUR_DIGIT, MIN_TEN, MIN_DIGIT)
     BEGIN
-        IF reset = '0' THEN
-            counter <= (others => '0');
-            pulse_o <= '0';
-        ELSIF rising_edge(clk) THEN
-            IF counter = CNT_MAX THEN
-                pulse_o <= '1';  -- Generate a pulse
-                counter <= (others => '0');
-            ELSE
-                pulse_o <= '0';
-                counter <= counter + 1;
-            END IF;
-        END IF;
+        MSG(0) <= HOUR_TEN;
+        MSG(1) <= HOUR_DIGIT;
+        MSG(2) <= COLON;
+        MSG(3) <= MIN_TEN;
+        MSG(4) <= MIN_DIGIT;
     END PROCESS;
-
-    ----------------------------------------------------------------------------
-    -- Update MSG with Input Values
-    ----------------------------------------------------------------------------
-    PROCESS(clk, reset)
-    BEGIN
-        IF reset = '0' THEN
-            update_flag <= '0';
-            MSG(0) <= (OTHERS => '0');
-            MSG(1) <= (OTHERS => '0');
-            MSG(2) <= "00111010";  -- Colon ":"
-            MSG(3) <= (OTHERS => '0');
-            MSG(4) <= (OTHERS => '0');
-        ELSIF rising_edge(clk) THEN
-            IF pulse_o = '1' THEN
-                MSG(0) <= HOUR_TENS;
-                MSG(1) <= HOUR_ONE;
-                MSG(3) <= MIN_TENS;
-                MSG(4) <= MIN_ONE;
-                update_flag <= '1';
-            END IF;
-        END IF;
-    END PROCESS;
-
-    ----------------------------------------------------------------------------
-    -- State Machine for LCD Control
-    ----------------------------------------------------------------------------
+           
     PROCESS(clk, reset)
     BEGIN
         IF reset = '0' THEN
@@ -145,22 +168,27 @@ BEGIN
             delay_counter <= 0;
             reg_rs <= '0';
             reg_rw <= '0';
-            reg_e  <= '0';
+            reg_e <= '0';
             reg_db <= (OTHERS => '0');
             busy_flag <= '1';
+            cmd_data_value <= (OTHERS => '0');
+            cmd_index <= 0;
             msg_index <= 0;
-            update_flag <= '0';
         ELSIF rising_edge(clk) THEN
             CASE state IS
+
+                -- Power-on wait >15ms
                 WHEN wait_power_on =>
                     IF delay_counter < POWER_ON_DELAY THEN
                         delay_counter <= delay_counter + 1;
                     ELSE
                         delay_counter <= 0;
-                        reg_db <= CMD_FUNC_SET_30;
+                        cmd_data_value <= CMD_FUNC_SET_30;
+                        reg_rs <= '0'; reg_rw <= '0'; reg_db <= CMD_FUNC_SET_30;
                         state <= send_first_30;
                     END IF;
 
+                -- Send first function set (0x30), wait >4.1ms
                 WHEN send_first_30 =>
                     reg_e <= '1';
                     IF delay_counter < ENABLE_PULSE THEN
@@ -176,32 +204,192 @@ BEGIN
                         delay_counter <= delay_counter + 1;
                     ELSE
                         delay_counter <= 0;
-                        reg_db <= CMD_FUNC_SET_30;
+                        cmd_data_value <= CMD_FUNC_SET_30;
+                        reg_rs <= '0'; reg_rw <= '0'; reg_db <= CMD_FUNC_SET_30;
                         state <= send_second_30;
                     END IF;
 
-                -- Additional Initialization States Omitted for Brevity...
-
-                WHEN check_done =>
-                    IF update_flag = '1' THEN
-                        msg_index <= 0;
-                        update_flag <= '0';
-                        state <= write_data_check_busy;
+                -- Send second function set (0x30), wait >100µs
+                WHEN send_second_30 =>
+                    reg_e <= '1';
+                    IF delay_counter < ENABLE_PULSE THEN
+                        delay_counter <= delay_counter + 1;
                     ELSE
-                        state <= wait_for_update;
+                        reg_e <= '0';
+                        delay_counter <= 0;
+                        state <= wait_second_30;
                     END IF;
 
+                WHEN wait_second_30 =>
+                    IF delay_counter < WAIT_100_US THEN
+                        delay_counter <= delay_counter + 1;
+                    ELSE
+                        delay_counter <= 0;
+                        cmd_data_value <= CMD_FUNC_SET_30;
+                        reg_rs <= '0'; reg_rw <= '0'; reg_db <= CMD_FUNC_SET_30;
+                        state <= send_third_30;
+                    END IF;
+
+                -- Send third function set (0x30)
+                WHEN send_third_30 =>
+                    reg_e <= '1';
+                    IF delay_counter < ENABLE_PULSE THEN
+                        delay_counter <= delay_counter + 1;
+                    ELSE
+                        reg_e <= '0';
+                        delay_counter <= 0;
+                        state <= wait_third_30_done;
+                    END IF;
+
+                WHEN wait_third_30_done =>
+                    cmd_index <= 0;
+                    cmd_data_value <= FINAL_CMDS(cmd_index);
+                    state <= check_busy_start;
+
+                -- Check busy flag routine for commands
+                WHEN check_busy_start =>
+                    reg_rs <= '0';
+                    reg_rw <= '1';
+                    reg_e <= '0';
+                    delay_counter <= 0;
+                    state <= check_busy_pulse_high;
+
+                WHEN check_busy_pulse_high =>
+                    reg_e <= '1';
+                    IF delay_counter < ENABLE_PULSE THEN
+                        delay_counter <= delay_counter + 1;
+                    ELSE
+                        delay_counter <= 0;
+                        state <= check_busy_pulse_wait;
+                    END IF;
+
+                WHEN check_busy_pulse_wait =>
+                    IF delay_counter < ENABLE_PULSE THEN
+                        delay_counter <= delay_counter + 1;
+                    ELSE
+                        delay_counter <= 0;
+                        state <= check_busy_pulse_low;
+                    END IF;
+
+                WHEN check_busy_pulse_low =>
+                    busy_flag <= lcd_db(7);
+                    reg_e <= '0';
+                    delay_counter <= 0;
+                    state <= check_busy_eval;
+
+                WHEN check_busy_eval =>
+                    IF busy_flag = '0' THEN
+                        reg_rs <= '0'; reg_rw <= '0'; reg_db <= cmd_data_value;
+                        delay_counter <= 0;
+                        state <= send_cmd_enable_high;
+                    ELSE
+                        IF delay_counter < BUSY_RECHECK THEN
+                            delay_counter <= delay_counter + 1;
+                        ELSE
+                            delay_counter <= 0;
+                            state <= check_busy_start;
+                        END IF;
+                    END IF;
+
+                -- Enable high for command
+                WHEN send_cmd_enable_high =>
+                    reg_e <= '1';
+                    IF delay_counter < ENABLE_PULSE THEN
+                        delay_counter <= delay_counter + 1;
+                    ELSE
+                        reg_e <= '0';
+                        delay_counter <= 0;
+                        state <= send_cmd_enable_low;
+                    END IF;
+
+                -- Enable low, move to next command
+                WHEN send_cmd_enable_low =>
+                    IF cmd_index < 5 THEN
+                        cmd_index <= cmd_index + 1;
+                        cmd_data_value <= FINAL_CMDS(cmd_index);
+                        state <= check_busy_start;
+                    ELSE
+                        state <= check_done;
+                    END IF;
+
+                -- Initialization complete, write "11:45"
+                WHEN check_done =>
+                    msg_index <= 0;
+                    state <= write_data_check_busy;
+
+                -- Write each character
                 WHEN write_data_check_busy =>
                     reg_rs <= '0'; reg_rw <= '1'; reg_e <= '0';
+                    IF delay_counter < ENABLE_PULSE THEN
+                        delay_counter <= delay_counter + 1;
+                    ELSE
+                        delay_counter <= 0;
+                        state <= write_data_pulse_high;
+                    END IF;
+
+                WHEN write_data_pulse_high => --delays for writing
+                    reg_e <= '1';
+                    IF delay_counter < ENABLE_PULSE THEN
+                        delay_counter <= delay_counter + 1;
+                    ELSE
+                        delay_counter <= 0;
+                        state <= write_data_pulse_wait;
+                    END IF;
+
+                WHEN write_data_pulse_wait => --delays
+                    IF delay_counter < ENABLE_PULSE THEN
+                        delay_counter <= delay_counter + 1;
+                    ELSE
+                        delay_counter <= 0;
+                        state <= write_data_pulse_low;
+                    END IF;
+
+                WHEN write_data_pulse_low =>
+                    busy_flag <= lcd_db(7);
+                    reg_e <= '0';
                     delay_counter <= 0;
-                    state <= write_data_pulse_high;
+                    IF busy_flag = '0' THEN
+                        reg_rs <= '1'; 
+                        reg_rw <= '0';
+                        reg_db <= MSG(msg_index);
+                        state <= send_data_enable;
+                    ELSE
+                        IF delay_counter < BUSY_RECHECK THEN
+                            delay_counter <= delay_counter + 1;
+                        ELSE
+                            delay_counter <= 0;
+                            state <= write_data_check_busy;
+                        END IF;
+                    END IF;
 
-                -- Writing Data States Omitted for Brevity...
+                WHEN send_data_enable =>
+                    reg_e <= '1';
+                    IF delay_counter < ENABLE_PULSE THEN
+                        delay_counter <= delay_counter + 1;
+                    ELSE
+                        reg_e <= '0';
+                        delay_counter <= 0;
+                        state <= increment_char_index;
+                    END IF;
 
+                WHEN increment_char_index =>
+                    msg_index <= msg_index + 1;
+                    IF msg_index < 4 THEN
+                        state <= write_data_check_busy;
+                    ELSE
+                        state <= done_writing;
+                    END IF;
+
+                WHEN done_writing =>
+                   
+                  state <= wait_power_on;
+                   
+               
                 WHEN OTHERS =>
                     state <= wait_power_on;
+
             END CASE;
         END IF;
     END PROCESS;
 
-END ARCHITECTURE;
+END behavior;
