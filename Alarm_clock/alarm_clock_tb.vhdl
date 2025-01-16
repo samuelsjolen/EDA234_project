@@ -49,11 +49,8 @@ architecture arch_tb of alarm_clock_tb is
       signal seg_output_tb          : std_logic_vector(7 downto 0);
       signal state_tb               : std_logic_vector(3 downto 0);
       signal keypad_ctrl_tb         : std_logic_vector(15 downto 0);
-      signal ic_ctrl_tb             : std_logic_vector(15 downto 0);
-      signal keypad_h_tens_ctrl_tb  : std_logic_vector(3 downto 0);
-      signal keypad_h_ones_ctrl_tb  : std_logic_vector(3 downto 0);
-      signal keypad_m_tens_ctrl_tb  : std_logic_vector(3 downto 0);    
-      signal keypad_m_ones_ctrl_tb  : std_logic_vector(3 downto 0);    
+      signal ic_ctrl_tb             : std_logic_vector(15 downto 0); 
+
           -- Clock period definition
     constant clk_period : time := 10 ns;
 
@@ -90,11 +87,7 @@ begin
     seg_output  => seg_output_tb,
     state       => state_tb,
     keypad_ctrl => keypad_ctrl_tb,
-    ic_ctrl     => ic_ctrl_tb,
-    keypad_h_tens_ctrl => keypad_h_tens_ctrl_tb,
-    keypad_h_ones_ctrl => keypad_h_ones_ctrl_tb,
-    keypad_m_tens_ctrl => keypad_m_tens_ctrl_tb,
-    keypad_m_ones_ctrl => keypad_m_ones_ctrl_tb
+    ic_ctrl     => ic_ctrl_tb
   );
 
       -- Clock generation

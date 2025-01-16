@@ -14,9 +14,9 @@ entity keyboard is
     keypad_h_tens   : out std_logic_vector(3 downto 0);
     keypad_h_ones   : out std_logic_vector(3 downto 0);
     keypad_m_tens   : out std_logic_vector(3 downto 0);
-    keypad_m_ones   : out std_logic_vector(3 downto 0);
-    seg_output      : out std_logic_vector(7 downto 0); -- Testbench
-    state           : out std_logic_vector(3 downto 0)  -- Testbench
+    keypad_m_ones   : out std_logic_vector(3 downto 0)
+--    seg_output      : out std_logic_vector(7 downto 0); -- Testbench
+--    state           : out std_logic_vector(3 downto 0)  -- Testbench
     );
 end entity;
 
@@ -64,7 +64,7 @@ architecture keyboard_arch of keyboard is
 
 begin
 row <= row_internal; -- Flyttade ur reg_proc
-seg_output <= seg_buffer; -- Testbench
+--seg_output <= seg_buffer; -- Testbench
 
   -- Process used to generate a slow clock
 process (clk)
@@ -76,7 +76,8 @@ begin
     else
         if rising_edge(clk) then
             counter := counter + 1;
-            if counter = 10 then --100 before 00 then
+            --if counter = 10 then testbench --100 before 00 then
+            if counter = 100 then -- Hardware
                 slow_clk <= not slow_clk;
                 counter := 0;
             end if;
@@ -96,8 +97,8 @@ begin
 	end if;
 end process;
 
-LED_activate <= refresh(2) & refresh(3);  -- Testbench
---LED_activate <= refresh(12) & refresh(13); -- Hardware
+--LED_activate <= refresh(2) & refresh(3);  -- Testbench
+LED_activate <= refresh(12) & refresh(13); -- Hardware
 
 
  -- Handles seg output
@@ -231,7 +232,7 @@ begin
     case current_state is 
     -- STATE FOR IDLE --
     when idle =>
-      state <= "0000"; -- Testbench
+      --state <= "0000"; -- Testbench
       an_lit <= '0';
       LED <= '0';
       seg_h_tens <= "10111111";     -- Resets every alarm value
@@ -255,7 +256,7 @@ begin
 
       -- STATE FOR SETTING HOUR FIRST DIGIT --
     when set_h_tens =>
-      state <= "0001"; -- Testbench
+      --state <= "0001"; -- Testbench
       an_lit <= '1';
       if seg_buffer = "11111001" then     -- If 1 is pressed (0xF9)
         seg_h_tens <= "11111001";         -- Graphical representation for 7-seg display
@@ -278,9 +279,9 @@ begin
 
       -- STATE FOR SETTING HOUR SECOND DIGIT --
       when set_h_ones =>
-      state <= "0010"; -- Testbench
-      if counter_ho = 15 then -- Testbench -- Delay to avoid unintended key press
-      --if counter_ho = 40000000 then -- Hardware  -- Delay to avoid unintended press
+      --state <= "0010"; -- Testbench
+      --if counter_ho = 15 then -- Testbench -- Delay to avoid unintended key press
+      if counter_ho = 40000000 then -- Hardware  -- Delay to avoid unintended press
         an_lit <= '1';
         if seg_h_tens = "10100100" then       -- If tens = 2, then only 0-4 acceptable inputs
           if seg_buffer = "11111001" then     -- If 1 is pressed (0xF9)
@@ -348,9 +349,9 @@ begin
 
       -- STATE FOR SETTING MINUTES FIRST DIGIT --
       when set_m_tens =>
-      state <= "0011"; -- Testbench
-      if counter_mt = 15 then -- Testbench -- Delay to avoid unintented press
-      --if counter_mt = 40000000 then -- Hardware  -- Delay to avoid unintented press
+      --state <= "0011"; -- Testbench
+      --if counter_mt = 15 then -- Testbench -- Delay to avoid unintented press
+      if counter_mt = 40000000 then -- Hardware  -- Delay to avoid unintented press
         an_lit <= '1';
         if seg_buffer = "11111001" then     -- If 1 is pressed (0xF9)
           seg_m_tens <= "11111001";
@@ -384,9 +385,9 @@ begin
 
       -- STATE FOR SETTING MINUTES SECOND DIGIT --
       when set_m_ones =>
-      state <= "0100";  -- Testbench
-      if counter_mo = 15 then -- Delay to avoid unintended key press 40000000
-      --if counter_mo = 40000000 then -- Hardware
+      --state <= "0100";  -- Testbench
+      --if counter_mo = 15 then -- Delay to avoid unintended key press 40000000
+      if counter_mo = 40000000 then -- Hardware
         if seg_buffer = "11111001" then     -- If 1 is pressed (0xF9)
           seg_m_ones <= "11111001";
           val_m_ones <= "0001";
@@ -434,7 +435,7 @@ begin
 
     -- BUFFER STATE, USED TO CONFIRM OF REDO THE TIME --
     when buffer_state =>
-    state <= "0101";
+    --state <= "0101"; -- Testbench
     if counter_bs = 15 then -- 40000000
       if seg_buffer = "10000011" then -- Press B to confirm
         next_state <= alarm_state;
@@ -445,13 +446,14 @@ begin
 
     -- WAITING FOR ALARM --
     when alarm_state =>
-    state <= "0110";
+    --state <= "0110"; -- Testbench
     LED <= '1';
       keypad_h_tens <= std_logic_vector(val_h_tens);
       keypad_h_ones <= std_logic_vector(val_h_ones);
       keypad_m_tens <= std_logic_vector(val_m_tens);
       keypad_m_ones <= std_logic_vector(val_m_ones);
-      if counter_as = 4 then -- 40000000
+      if counter_as = 40000000 then -- Hardware
+      --if counter_as = 4 then -- Testbench
         if seg_buffer = "10001000" then -- Delay to avoid unintended key press
           next_state <= set_h_ones;
         elsif seg_buffer = "11000110" then -- Press C to cancel alarm

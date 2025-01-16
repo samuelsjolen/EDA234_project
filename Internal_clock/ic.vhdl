@@ -9,11 +9,10 @@ entity ic is
 				led_sec				: out	std_logic_vector(5 downto 0);
 				led_min				: out std_logic_vector(3 downto 0);
 				led_h	 				: out std_logic_vector(3 downto 0);	
-				ic_h_tens			: out std_logic_vector(3 downto 0);--:= (Others => '0');
-				ic_h_ones			: out std_logic_vector(3 downto 0);--:= (Others => '0');
-				ic_m_tens			: out std_logic_vector(3 downto 0);--:= (Others => '0');
-				ic_m_ones			: out std_logic_vector(3 downto 0)--:= (Others => '0')
-				--num_ctrl			: out std_logic_vector(3 downto 0)
+				ic_h_tens			: out std_logic_vector(3 downto 0);
+				ic_h_ones			: out std_logic_vector(3 downto 0);
+				ic_m_tens			: out std_logic_vector(3 downto 0);
+				ic_m_ones			: out std_logic_vector(3 downto 0)
     );
 end ic;
 
@@ -37,11 +36,6 @@ signal bin_sec				: unsigned(5 downto 0);
 signal bin_min				: unsigned(3 downto 0);
 signal bin_h  				: unsigned(3 downto 0);
 
-signal val_h_tens			: unsigned(3 downto 0):= (Others => '0');
-signal val_h_ones			: unsigned(3 downto 0):= (Others => '0');
-signal val_m_tens			: unsigned(3 downto 0):= (Others => '0');
-signal val_m_ones			: unsigned(3 downto 0):= (Others => '0');
-
 begin
 led_sec <= std_logic_vector(bin_sec); 		-- Used to display clock on FPGA LEDs
 led_min <= std_logic_vector(bin_min); 		-- Used to display clock on FPGA LEDs
@@ -53,9 +47,6 @@ ic_m_tens	<= std_logic_vector(min_tens); 	-- Used to trigger the alarm
 ic_m_ones	<= std_logic_vector(min_ones); 	-- Used to trigger the alarm
 
 
-
---num_ctrl <= std_logic_vector(num);  -- TB 2
-
 -- Reset logic, inverted on board
 
 -- Counter 
@@ -66,8 +57,8 @@ begin
 			counter_sec <= 0;
 			sec_clk_enable <= '0';
 		else
-			if counter_sec = 1 then -- Testbench
-			--if counter_sec = 10000000 then -- Hardware
+			--if counter_sec = 1 then -- Testbench
+			if counter_sec = 100000000 then -- Hardware
 				counter_sec <= 0;
 				sec_clk_enable <= '1';       -- Trigger events that depend on 1-second intervals
 			else
@@ -90,8 +81,8 @@ begin
 	end if;
 end process;
 
-LED_activate <= refresh(1) & refresh(2);  -- Testbench
--- LED_activate <= refresh(12) & refresh(13); -- Hardware
+--LED_activate <= refresh(1) & refresh(2);  -- Testbench
+LED_activate <= refresh(12) & refresh(13); -- Hardware
 
 -- Process to switch between AN1 and AN0
 an_proc : process (clk, reset, LED_activate)
@@ -118,16 +109,12 @@ MUX : process (sec_ones, sec_tens, LED_activate)
 begin
 	if LED_activate = "00" then
 		num <= min_ones;
-		--ic_m_ones <= std_logic_vector(SEG);
 	elsif LED_activate = "01" then
 		num <= min_tens;
-		--ic_m_tens <= std_logic_vector(SEG);
 	elsif LED_activate = "10" then
 		num <= h_ones; 
-		--ic_h_ones <= std_logic_vector(SEG);
 	else
 		num <= h_tens;
-		--ic_h_tens <= std_logic_vector(SEG);
 	end if; 
 end process; 
 
@@ -164,10 +151,8 @@ begin
 											bin_min  <= bin_min + 1;
 													if min_tens = "0101" then -- If min_tens reaches 5
 															min_tens <= (others => '0');
-															val_m_ones <= (others => '0');
 															h_ones <= h_ones + 1;
 															bin_h  <= bin_h + 1;
-															val_h_tens <= val_h_tens + 1;
 																	if h_ones = "0011" then
 																			if h_tens = "0010" then
 																					h_ones <=  (others => '0');
