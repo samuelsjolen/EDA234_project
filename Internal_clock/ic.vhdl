@@ -1,54 +1,73 @@
-library IEEE;
-use IEEE.STD_LOGIC_1164.ALL;
-use IEEE.NUMERIC_STD.ALL;
+library ieee;
+use ieee.std_logic_1164.all;
+use ieee.numeric_std.all;
 
 entity ic is
     Port (
-        clk         	: in  std_logic;
-        reset       	: in  std_logic;
-				led_sec				: out	std_logic_vector(5 downto 0);
-				led_min				: out std_logic_vector(3 downto 0);
-				led_h	 				: out std_logic_vector(3 downto 0);	
-				ic_h_tens			: out std_logic_vector(3 downto 0);
-				ic_h_ones			: out std_logic_vector(3 downto 0);
-				ic_m_tens			: out std_logic_vector(3 downto 0);
-				ic_m_ones			: out std_logic_vector(3 downto 0)
+        clk         	: in  std_logic;										-- Clock
+        reset       	: in  std_logic;										-- Reset
+				led_sec				: out	std_logic_vector(5 downto 0);	-- Binary LED counter 
+				led_min				: out std_logic_vector(3 downto 0);	-- Binary LED counter
+				led_h	 				: out std_logic_vector(3 downto 0);	-- Binary LED counter	
+				ic_h_tens			: out std_logic_vector(3 downto 0);	-- Used to activate alarm
+				ic_h_ones			: out std_logic_vector(3 downto 0);	-- Used to activate alarm
+				ic_m_tens			: out std_logic_vector(3 downto 0);	-- Used to activate alarm
+				ic_m_ones			: out std_logic_vector(3 downto 0);	-- Used to activate alarm
+				h_tens_lcd 		: out std_logic_vector(7 DOWNTO 0);	-- LCD data for displaying time
+				h_ones_lcd 		: out std_logic_vector(7 DOWNTO 0);	-- LCD data for displaying time
+				min_ones_lcd 	: out std_logic_vector(7 DOWNTO 0);	-- LCD data for displaying time
+				min_tens_lcd 	: out std_logic_vector(7 DOWNTO 0) 	-- LCD data for displaying time
     );
 end ic;
 
 architecture ic_arch of ic is
 
--- Internal signals
-signal sec_clk_enable : STD_LOGIC := '0'; -- Enable signal instead of using derived clock
-signal LED_activate   : std_logic_vector(1 downto 0); 
-signal refresh        : Unsigned(18 downto 0); 
-signal counter_sec    : integer := 0;
-signal num            : unsigned(3 downto 0);   
-signal sec_ones       : unsigned(3 downto 0); 
-signal sec_tens       : unsigned(3 downto 0);
-signal min_ones       : unsigned(3 downto 0);
-signal min_tens       : unsigned(3 downto 0);
-signal h_ones         : unsigned(3 downto 0);
-signal h_tens         : unsigned(3 downto 0);
-signal SEG   					: unsigned(7 downto 0);
-signal AN    					: unsigned(7 downto 0);
-signal bin_sec				: unsigned(5 downto 0);
-signal bin_min				: unsigned(3 downto 0);
-signal bin_h  				: unsigned(3 downto 0);
+  ----------------------------------------------------------------------------
+  ---------- SIGNAL DECLARATIONS ----------
+  ----------------------------------------------------------------------------
+	-- Signals used to count time
+	signal sec_ones       : unsigned(3 downto 0); 
+	signal sec_tens       : unsigned(3 downto 0);
+	signal min_ones       : unsigned(3 downto 0);
+	signal min_tens       : unsigned(3 downto 0);
+	signal h_ones         : unsigned(3 downto 0);
+	signal h_tens         : unsigned(3 downto 0);
+
+	-- Signals used to count seconds, baased on processor clock
+	signal sec_clk_enable : STD_LOGIC := '0';
+	signal counter_sec    : integer := 0;
+
+	-- Signal used to transform time to 7-seg (Not currently used)
+	signal num            : unsigned(3 downto 0); 
+
+	-- Signals used to display time on 7-seg (Not currently used)
+	signal SEG   					: unsigned(7 downto 0);
+	signal AN    					: unsigned(7 downto 0);
+	signal LED_activate   : std_logic_vector(1 downto 0); 
+	signal refresh        : Unsigned(18 downto 0); 
+
+	-- Signals used for 
+	signal bin_sec				: unsigned(5 downto 0);
+	signal bin_min				: unsigned(3 downto 0);
+	signal bin_h  				: unsigned(3 downto 0);
+
 
 begin
+-- Transforming unsigned to std_logic_vector
 led_sec <= std_logic_vector(bin_sec); 		-- Used to display clock on FPGA LEDs
 led_min <= std_logic_vector(bin_min); 		-- Used to display clock on FPGA LEDs
 led_h 	<= std_logic_vector(bin_h);				-- Used to display clock on FPGA LEDs
 
+-- Transforming unsigned to std_logic_vector
 ic_h_tens	<= std_logic_vector(h_tens); 		-- Used to trigger the alarm
 ic_h_ones	<= std_logic_vector(h_ones); 		-- Used to trigger the alarm
 ic_m_tens	<= std_logic_vector(min_tens); 	-- Used to trigger the alarm
 ic_m_ones	<= std_logic_vector(min_ones); 	-- Used to trigger the alarm
 
 
--- Reset logic, inverted on board
-
+  ----------------------------------------------------------------------------
+  ---------- PROCESSES ----------  
+  ----------------------------------------------------------------------------
 -- Counter 
 sec_counter : process (clk, reset)
 begin
@@ -81,7 +100,6 @@ begin
 	end if;
 end process;
 
---LED_activate <= refresh(1) & refresh(2);  -- Testbench
 LED_activate <= refresh(12) & refresh(13); -- Hardware
 
 -- Process to switch between AN1 and AN0
@@ -129,7 +147,6 @@ begin
       min_tens  <= (others => '0'); -- Keeps track of time
       h_ones    <= (others => '0'); -- Keeps track of time
       h_tens    <= (others => '0'); -- Keeps track of time
-
 			bin_sec 	<= (others => '0');	-- Used to display clock on FPGA LEDs
 			bin_min		<= (others => '0');	-- Used to display clock on FPGA LEDs
 			bin_h			<= (others => '0');	-- Used to display clock on FPGA LEDs
@@ -145,30 +162,30 @@ begin
 							bin_sec  <= (others => '0');
 							min_ones <= min_ones + 1;
 							bin_min  <= bin_min + 1;
-									if min_ones = "1001" then -- If min_ones reaches 9
-											min_ones <= (others => '0');
-											min_tens <= min_tens + 1;
-											bin_min  <= bin_min + 1;
-													if min_tens = "0101" then -- If min_tens reaches 5
-															min_tens <= (others => '0');
-															h_ones <= h_ones + 1;
-															bin_h  <= bin_h + 1;
-																	if h_ones = "0011" then
-																			if h_tens = "0010" then
-																					h_ones <=  (others => '0');
-																					h_tens <=  (others => '0');
-																					bin_h  <=  (others => '0');
-																			end if;
-																	elsif h_ones = "1001" then
-																			h_ones <= (others => '0');
-																			h_tens <= h_tens + 1;
-																			bin_h  <= bin_h + 1;
-																	end if;
+							if min_ones = "1001" then -- If min_ones reaches 9
+									min_ones <= (others => '0');
+									min_tens <= min_tens + 1;
+									bin_min  <= bin_min + 1;
+									if min_tens = "0101" then -- If min_tens reaches 5
+											min_tens <= (others => '0');
+											h_ones <= h_ones + 1;
+											bin_h  <= bin_h + 1;
+											if h_ones = "0011" then
+													if h_tens = "0010" then
+															h_ones <=  (others => '0');
+															h_tens <=  (others => '0');
+															bin_h  <=  (others => '0');
 													end if;
-										end if;
-						end if;
+											elsif h_ones = "1001" then
+													h_ones <= (others => '0');
+													h_tens <= h_tens + 1;
+													bin_h  <= bin_h + 1;
+											end if;
+									end if;
+							end if;
 					end if;
-				end if;
+			end if;
+	end if;
 		end if;
 	--end if;
 end process;
@@ -200,4 +217,100 @@ begin
 			SEG <= "11111101"; -- Default (error state)
 	end case;
 end process;
+
+-- Display output
+display_min_ones : PROCESS (min_ones)
+BEGIN
+	CASE min_ones IS
+		WHEN "0000" => 
+			min_ones_lcd <= "00110000"; -- Displays 0
+		WHEN "0001" => 
+			min_ones_lcd <= "00110001"; -- Displays 1
+		WHEN "0010" => 
+			min_ones_lcd <= "00110010"; -- Displays 2
+		WHEN "0011" => 
+			min_ones_lcd <= "00110011"; -- Displays 3
+		WHEN "0100" => 
+			min_ones_lcd <= "00110100"; -- Displays 4
+		WHEN "0101" => 
+			min_ones_lcd <= "00110101"; -- Displays 5
+		WHEN "0110" => 
+			min_ones_lcd <= "00110110"; -- Displays 6
+		WHEN "0111" => 
+			min_ones_lcd <= "00110111"; -- Displays 7
+		WHEN "1000" => 
+			min_ones_lcd <= "00111000"; -- Displays 8
+		WHEN "1001" => 
+			min_ones_lcd <= "00111001"; -- Displays 9
+		WHEN OTHERS => 
+			min_ones_lcd <= "00101101"; -- Default (error state)
+	END CASE;
+END PROCESS display_min_ones;
+
+-- Display output
+display_min_tens : PROCESS (min_tens)
+BEGIN
+	CASE min_tens IS
+		WHEN "0000" => 
+			min_tens_lcd <= "00110000"; -- Displays 0
+		WHEN "0001" => 
+			min_tens_lcd <= "00110001"; -- Displays 1
+		WHEN "0010" => 
+			min_tens_lcd <= "00110010"; -- Displays 2
+		WHEN "0011" => 
+			min_tens_lcd <= "00110011"; -- Displays 3
+		WHEN "0100" => 
+			min_tens_lcd <= "00110100"; -- Displays 4
+		WHEN "0101" => 
+			min_tens_lcd <= "00110101"; -- Displays 5
+		WHEN "0110" => 
+			min_tens_lcd <= "00110110"; -- Displays 6
+		WHEN OTHERS => 
+			min_tens_lcd <= "00101101"; -- Default (error state)
+	END CASE;
+END PROCESS display_min_tens;
+
+-- Display output
+display_h_ones : PROCESS (h_ones)
+BEGIN
+	CASE h_ones IS
+		WHEN "0000" => 
+			h_ones_lcd <= "00110000"; -- Displays 0
+		WHEN "0001" => 
+			h_ones_lcd <= "00110001"; -- Displays 1
+		WHEN "0010" => 
+			h_ones_lcd <= "00110010"; -- Displays 2
+		WHEN "0011" => 
+			h_ones_lcd <= "00110011"; -- Displays 3
+		WHEN "0100" => 
+			h_ones_lcd <= "00110100"; -- Displays 4
+		WHEN "0101" => 
+			h_ones_lcd <= "00110101"; -- Displays 5
+		WHEN "0110" => 
+			h_ones_lcd <= "00110110"; -- Displays 6
+		WHEN "0111" => 
+			h_ones_lcd <= "00110111"; -- Displays 7
+		WHEN "1000" => 
+			h_ones_lcd <= "00111000"; -- Displays 8
+		WHEN "1001" => 
+			h_ones_lcd <= "00111001"; -- Displays 9
+		WHEN OTHERS => 
+			h_ones_lcd <= "00101101"; -- Default (error state)
+	END CASE;
+END PROCESS display_h_ones;
+
+-- Display output
+display_h_tens : PROCESS (h_tens)
+BEGIN
+	CASE h_tens IS
+		WHEN "0000" => 
+			h_tens_lcd <= "00110000"; -- Displays 0
+		WHEN "0001" => 
+			h_tens_lcd <= "00110001"; -- Displays 1
+		WHEN "0010" => 
+			h_tens_lcd <= "00110010"; -- Displays 2
+		WHEN OTHERS => 
+			h_tens_lcd <= "00101101"; -- Default (error state)
+	END CASE;
+END PROCESS display_h_tens;
 end architecture;

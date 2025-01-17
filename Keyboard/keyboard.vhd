@@ -232,22 +232,21 @@ begin
     case current_state is 
     -- STATE FOR IDLE --
     when idle =>
-      --state <= "0000"; -- Testbench
       an_lit <= '0';
       LED <= '0';
-      seg_h_tens <= "10111111";     -- Resets every alarm value
-      seg_h_ones <= "10111111";     -- Resets every alarm value
-      seg_m_tens <= "10111111";     -- Resets every alarm value
-      seg_m_ones <= "10111111";     -- Resets every alarm value
-      keypad_h_tens <= "ZZZZ";      -- Don't want any output until alarm is set
-      keypad_h_ones <= "ZZZZ";      -- Don't want any output until alarm is set
-      keypad_m_tens <= "ZZZZ";      -- Don't want any output until alarm is set
-      keypad_m_ones <= "ZZZZ";      -- Don't want any output until alarm is set
-      counter_ht  := 0;             -- Enables delay to avoid unintended press
-      counter_ho  := 0;             -- Enables delay to avoid unintended press
-      counter_mt  := 0;             -- Enables delay to avoid unintended press
-      counter_mo  := 0;             -- Enables delay to avoid unintended press
-        if seg_buffer = "10001000" then  -- If A is pressed
+      seg_h_tens <= "10111111";         -- Resets every alarm value
+      seg_h_ones <= "10111111";         -- Resets every alarm value
+      seg_m_tens <= "10111111";         -- Resets every alarm value
+      seg_m_ones <= "10111111";         -- Resets every alarm value
+      keypad_h_tens <= "ZZZZ";          -- Don't want any output until alarm is set
+      keypad_h_ones <= "ZZZZ";          -- Don't want any output until alarm is set
+      keypad_m_tens <= "ZZZZ";          -- Don't want any output until alarm is set
+      keypad_m_ones <= "ZZZZ";          -- Don't want any output until alarm is set
+      counter_ht  := 0;                 -- Enables delay to avoid unintended press
+      counter_ho  := 0;                 -- Enables delay to avoid unintended press
+      counter_mt  := 0;                 -- Enables delay to avoid unintended press
+      counter_mo  := 0;                 -- Enables delay to avoid unintended press
+        if seg_buffer = "10001000" then -- If A is pressed
           next_state <= set_h_tens;
         end if;
         if seg_buffer = "10100001" then
@@ -256,7 +255,6 @@ begin
 
       -- STATE FOR SETTING HOUR FIRST DIGIT --
     when set_h_tens =>
-      --state <= "0001"; -- Testbench
       an_lit <= '1';
       if seg_buffer = "11111001" then     -- If 1 is pressed (0xF9)
         seg_h_tens <= "11111001";         -- Graphical representation for 7-seg display
@@ -279,9 +277,7 @@ begin
 
       -- STATE FOR SETTING HOUR SECOND DIGIT --
       when set_h_ones =>
-      --state <= "0010"; -- Testbench
-      --if counter_ho = 15 then -- Testbench -- Delay to avoid unintended key press
-      if counter_ho = 40000000 then -- Hardware  -- Delay to avoid unintended press
+      if counter_ho = 40000000 then           -- Delay to avoid unintended press
         an_lit <= '1';
         if seg_h_tens = "10100100" then       -- If tens = 2, then only 0-4 acceptable inputs
           if seg_buffer = "11111001" then     -- If 1 is pressed (0xF9)
@@ -349,34 +345,38 @@ begin
 
       -- STATE FOR SETTING MINUTES FIRST DIGIT --
       when set_m_tens =>
-      --state <= "0011"; -- Testbench
-      --if counter_mt = 15 then -- Testbench -- Delay to avoid unintented press
       if counter_mt = 40000000 then -- Hardware  -- Delay to avoid unintented press
         an_lit <= '1';
         if seg_buffer = "11111001" then     -- If 1 is pressed (0xF9)
           seg_m_tens <= "11111001";
           val_m_tens <= "0001";
           next_state <= set_m_ones;
+          counter_mt := 0;
         elsif seg_buffer = "10100100" then  -- If 2 is pressed (0xA4)
           seg_m_tens <= "10100100"; 
           val_m_tens <= "0010";
           next_state <= set_m_ones;
+          counter_mt := 0;
         elsif seg_buffer = "10110000" then  -- If 3 is pressed (0xA4)
           seg_m_tens <= "10110000"; 
           val_m_tens <= "0011";
           next_state <= set_m_ones;
+          counter_mt := 0;
         elsif seg_buffer = "10011001" then  -- If 4 is pressed (0xA4)
           seg_m_tens <= "10011001"; 
           val_m_tens <= "0100";
           next_state <= set_m_ones;
+          counter_mt := 0;
         elsif seg_buffer = "10010010" then  -- If 5 is pressed (0xA4)
           seg_m_tens <= "10010010"; 
           val_m_tens <= "0101";
           next_state <= set_m_ones;
+          counter_mt := 0;
         elsif seg_buffer = "11000000" then  -- If 0 is pressed (0xA4)
           seg_m_tens <= "11000000"; 
           val_m_tens <= "0000";
           next_state <= set_m_ones;
+          counter_mt := 0;
         else null;
         end if;  
       else 
@@ -385,47 +385,55 @@ begin
 
       -- STATE FOR SETTING MINUTES SECOND DIGIT --
       when set_m_ones =>
-      --state <= "0100";  -- Testbench
-      --if counter_mo = 15 then -- Delay to avoid unintended key press 40000000
-      if counter_mo = 40000000 then -- Hardware
+      if counter_mo = 40000000 then -- Delay
         if seg_buffer = "11111001" then     -- If 1 is pressed (0xF9)
           seg_m_ones <= "11111001";
           val_m_ones <= "0001";
           next_state <= buffer_state;
+          counter_mo := 0;
         elsif seg_buffer = "10100100" then  -- If 2 is pressed (0xA4)
           seg_m_ones <= "10100100"; 
           val_m_ones <= "0010";
           next_state <= buffer_state;
+          counter_mo := 0;
         elsif seg_buffer = "10110000" then  -- If 3 is pressed (0xA4)
           seg_m_ones <= "10110000"; 
           val_m_ones <= "0011";
           next_state <= buffer_state;
+          counter_mo := 0;
         elsif seg_buffer = "10011001" then  -- If 4 is pressed (0xA4)
           seg_m_ones <= "10011001"; 
           val_m_ones <= "0100";
           next_state <= buffer_state;
+          counter_mo := 0;
         elsif seg_buffer = "10010010" then  -- If 5 is pressed (0xA4)
           seg_m_ones <= "10010010"; 
           val_m_ones <= "0101";
           next_state <= buffer_state;
+          counter_mo := 0;
         elsif seg_buffer = "10000010" then  -- If 6 is pressed (0xA4)
           seg_m_ones <= "10000010"; 
           val_m_ones <= "0110";
           next_state <= buffer_state;
+          counter_mo := 0;
         elsif seg_buffer = "11111000" then  -- If 7 is pressed (0xA4)
           seg_m_ones <= "11111000"; 
           val_m_ones <= "0111";
           next_state <= buffer_state;
+          counter_mo := 0;
         elsif seg_buffer = "10000000" then  -- If 8 is pressed (0xA4)
           seg_m_ones <= "10000000"; 
           val_m_ones <= "1000";
           next_state <= buffer_state;
+          counter_mo := 0;
         elsif seg_buffer = "10010000" then  -- If 9 is pressed (0xA4)
           seg_m_ones <= "10010000"; 
           next_state <= buffer_state;
+          counter_mo := 0;
         elsif seg_buffer = "11000000" then  -- If 0 is pressed (0xA4)
           seg_m_ones <= "11000000"; 
           next_state <= buffer_state;
+          counter_mo := 0;
         else 
           null;
         end if;  
@@ -433,12 +441,27 @@ begin
         counter_mo := counter_mo + 1;
     end if;
 
-    -- BUFFER STATE, USED TO CONFIRM OF REDO THE TIME --
+    -- BUFFER STATE, USED TO CONFIRM OR REDO THE TIME --
     when buffer_state =>
-    --state <= "0101"; -- Testbench
-    if counter_bs = 15 then -- 40000000
+    if counter_bs = 100000000 then
       if seg_buffer = "10000011" then -- Press B to confirm
         next_state <= alarm_state;
+        counter_bs := 0;     
+      elsif seg_buffer = "11111001" then
+        seg_h_tens <= "11111001";
+        val_h_tens <= "0001";
+        next_state <= set_h_ones;
+        counter_bs := 0;     
+      elsif seg_buffer = "10100100" then 
+        seg_h_tens <= "10100100";        
+        val_h_tens <= "0010";            
+        next_state <= set_h_ones;
+        counter_bs := 0;     
+      elsif seg_buffer = "11000000" then 
+        seg_h_tens <= "11000000";        
+        val_h_tens <= "0000";            
+        next_state <= set_h_ones;
+        counter_bs := 0;     
       end if;
     else
       counter_bs := counter_bs + 1;
@@ -446,18 +469,17 @@ begin
 
     -- WAITING FOR ALARM --
     when alarm_state =>
-    --state <= "0110"; -- Testbench
     LED <= '1';
       keypad_h_tens <= std_logic_vector(val_h_tens);
       keypad_h_ones <= std_logic_vector(val_h_ones);
       keypad_m_tens <= std_logic_vector(val_m_tens);
       keypad_m_ones <= std_logic_vector(val_m_ones);
-      if counter_as = 40000000 then -- Hardware
-      --if counter_as = 4 then -- Testbench
-        if seg_buffer = "10001000" then -- Delay to avoid unintended key press
-          next_state <= set_h_ones;
-        elsif seg_buffer = "11000110" then -- Press C to cancel alarm
+      if counter_as = 40000000 then -- Delay
+        if seg_buffer = "11000110" then -- Press C to cancel alarm
           next_state <= idle;
+          counter_as := 0;
+        else
+          null;
         end if;
       else
         counter_as := counter_as + 1;

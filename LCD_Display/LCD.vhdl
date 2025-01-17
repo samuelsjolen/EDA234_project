@@ -22,11 +22,11 @@ ARCHITECTURE behavior OF lcd_init IS
     ----------------------------------------------------------------------------
     -- Timing constants
     ----------------------------------------------------------------------------
-    CONSTANT POWER_ON_DELAY : integer := 2_000_000;  -- ~20 ms
-    CONSTANT WAIT_4_1_MS    : integer := 500_000;    -- ~5 ms
-    CONSTANT WAIT_100_US    : integer := 20_000;     -- ~200 µs
-    CONSTANT ENABLE_PULSE   : integer := 1_000;      -- ~10 µs E high
-    CONSTANT BUSY_RECHECK   : integer := 20_000;     -- ~200 µs between BF checks
+    CONSTANT POWER_ON_DELAY : integer := 2_0000_000;    -- ~20 ms
+    CONSTANT WAIT_4_1_MS    : integer := 500_000;       -- ~5 ms
+    CONSTANT WAIT_100_US    : integer := 20_000;        -- ~200 µs
+    CONSTANT ENABLE_PULSE   : integer := 1_00000;       -- ~10 µs E high
+    CONSTANT BUSY_RECHECK   : integer := 20_0000;       -- ~200 µs between BF checks
 
     ----------------------------------------------------------------------------
     -- Commands
@@ -110,7 +110,8 @@ ARCHITECTURE behavior OF lcd_init IS
     SIGNAL reg_rw : std_logic := '0';
     SIGNAL reg_e  : std_logic := '0';
     SIGNAL reg_db : std_logic_vector(7 DOWNTO 0) := (OTHERS => '0');
-   
+     signal counter_5s :integer := 0;
+     signal delay_5s: std_logic;
     SIGNAL cmd_data_value : std_logic_vector(7 DOWNTO 0) := (OTHERS => '0');
     SIGNAL cmd_index      : integer := 0;
 
@@ -123,19 +124,34 @@ BEGIN
     lcd_e  <= reg_e;
     lcd_db <= reg_db WHEN reg_rw='0' ELSE (OTHERS => 'Z'); --tri-state condition
    
-    HOUR_TEN <= "00110001";
-    HOUR_DIGIT <="00110011";
+    --HOUR_TEN <= "00110001";
+  --  HOUR_DIGIT <="00110011";
     COLON <= "00111010";
-    MIN_TEN <= "00110100";
-    MIN_DIGIT <= "00110101";
+   --MIN_TEN <= "00110100";
+   -- MIN_DIGIT <= "00110101";
    
     HOUR_TEN <= HOUR_TENS;
     HOUR_DIGIT <= HOUR_ONE;
     MIN_TEN <= MIN_TENS;
     MIN_DIGIT <= MIN_ONE;
+
     ------------------------------------------------------------------------------------------------
     -- PROCESS FOR UPDATING DISPLAY FROM INTERNAL
     ------------------------------------------------------------------------------------------------
+    process(clk)
+    begin
+        if reset = '0' then
+        counter_5s <= 0;
+        delay_5s <= '0';
+        elsif rising_edge(clk) then
+            if counter_5s = 500000000 then
+                delay_5s <= '1';
+            else
+                counter_5s <= counter_5s +1;
+                delay_5s <= '0';
+             end if;
+         end if;
+    end process;
     PROCESS(HOUR_TEN, HOUR_DIGIT, MIN_TEN, MIN_DIGIT)
     BEGIN
         MSG(0) <= HOUR_TEN;
@@ -333,7 +349,7 @@ BEGIN
                     reg_e <= '0';
                     delay_counter <= 0;
                     IF busy_flag = '0' THEN
-                        reg_rs <= '1'; -- Data register, cahnge so that we can write to the lcd
+                        reg_rs <= '1'; 
                         reg_rw <= '0';
                         reg_db <= MSG(msg_index);
                         state <= send_data_enable;
@@ -358,18 +374,17 @@ BEGIN
 
                 WHEN increment_char_index =>
                     msg_index <= msg_index + 1;
-                    IF msg_index < 5 THEN
+                    IF msg_index < 4 THEN
                         state <= write_data_check_busy;
                     ELSE
                         state <= done_writing;
                     END IF;
 
                 WHEN done_writing =>
-                    state <= finished;
-
-                WHEN finished =>
-                    NULL;
-
+                   
+                  state <= wait_power_on;
+                   
+               
                 WHEN OTHERS =>
                     state <= wait_power_on;
 
