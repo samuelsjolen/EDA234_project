@@ -15,13 +15,16 @@ entity keyboard is
     keypad_h_ones   : out std_logic_vector(3 downto 0);
     keypad_m_tens   : out std_logic_vector(3 downto 0);
     keypad_m_ones   : out std_logic_vector(3 downto 0)
---    seg_output      : out std_logic_vector(7 downto 0); -- Testbench
---    state           : out std_logic_vector(3 downto 0)  -- Testbench
     );
 end entity;
 
 architecture keyboard_arch of keyboard is
+
+
+  ----------------------------------------------------------------------------
   ---------- TYPE DECLARATIONS ----------
+  ----------------------------------------------------------------------------
+
   type states is(
     idle,
     set_h_tens,
@@ -32,7 +35,11 @@ architecture keyboard_arch of keyboard is
     alarm_state
   );
 
+  
+  ----------------------------------------------------------------------------
   ---------- SIGNAL DECLARATIONS ----------
+  ----------------------------------------------------------------------------
+
   -- VARIOUS
   signal row_reg        : unsigned(3 downto 0);
   signal shifted_out    : std_logic;
@@ -64,7 +71,11 @@ architecture keyboard_arch of keyboard is
 
 begin
 row <= row_internal; -- Flyttade ur reg_proc
---seg_output <= seg_buffer; -- Testbench
+
+
+----------------------------------------------------------------------------
+---------- PROCESSES ----------
+----------------------------------------------------------------------------
 
   -- Process used to generate a slow clock
 process (clk)
@@ -76,7 +87,6 @@ begin
     else
         if rising_edge(clk) then
             counter := counter + 1;
-            --if counter = 10 then testbench --100 before 00 then
             if counter = 100 then -- Hardware
                 slow_clk <= not slow_clk;
                 counter := 0;
@@ -97,7 +107,6 @@ begin
 	end if;
 end process;
 
---LED_activate <= refresh(2) & refresh(3);  -- Testbench
 LED_activate <= refresh(12) & refresh(13); -- Hardware
 
 
